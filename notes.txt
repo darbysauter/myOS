@@ -1,0 +1,108 @@
+TO RUN:
+then in root dir run "make run"
+
+TO DEBUG:
+in one term "make debug"
+in other term "gdb"
+
+Copying kernel successfully.
+
+Working on getting everything setup and ready to jump to kernel
+
+- IDT
+- disable PIC
+- APIC
+- GDT and TSS
+
+
+we have until 0x7FFFF
+boot0: 0x7c00-0x7e00 # will get paved over
+boot1: 0x1000-0x3000
+stack: < 0x7c00 (do 0x8000 before jumping to kernel )
+memorymap: 0x8000
+bootloader pagetables: 0x9000-0x34000 (51GiB max)
+kernel pagetables: 0x34000-0x70000 (52 GiB max)
+
+bootloader paging:
+0x9000 -> 0xa000 -> [0xb000, 0xc000) point to 0x200000 byte regions.
+          0xa008 -> [0xc000, 0xd000) point to 0x200000 byte regions.
+          ...
+
+kernel paging:
+0x34000 -> 0x35000 -> [0x36000, 0x37000) point to 0x200000 byte regions.
+           0x35008 -> [0x37000, 0x38000) point to 0x200000 byte regions.
+           ...
+
+what we want to do is:
+PD = 0xc000, 0xd000, ... as many as we need
+PDPT[RDX] = PD
+PD[RCX] = Physaddr
+
+lets try loading kernel at 0x4000000
+
+http://www.skyfree.org/linux/references/ELF_Format.pdf
+
+REMEMBER MEMORY IS NOT CONTIGUOUS!!!
+
+TODO memory stuff:
+- create new pagetable from heap
+- create heap allocator
+
+- create new pagetable from allocated pages
+    - how to access tables:
+    - have index 0x1ff of every table point to the table itself
+    - so here is a couple examples of how to access any table
+    - start with virt addr of PML4
+    - To get PML4E index 3:
+        - PML4E index (0x1ff) PDPT ind (0x1ff) PD ind (0x1ff) PT ind (0x1ff) offset (3 * 8)
+
+    - To get PML4E index 3 PDPT index 7 PD index 2:
+        - PML4E index (0x1ff) PDPT ind (0x1ff) PD ind (3) PT ind (7) offset (2 * 8)
+
+- create heap for current pagetable
+- create new pagetable
+    - map in everthing needed:
+        - ELF regions in target and temporarily matching current mapping for context switch
+        - pagetable with recursive entry
+        - stack
+        - heap
+    - load pagetable
+    - unmap old mapping for ELF
+- adjust heap
+
+- create method on PML4 to create new PML4 and to add PDPT at index
+
+How to use page table after remapping
+
+    for i_pml4e in 0..pml4.entries.len() {
+        if pml4.entries[i_pml4e].present() {
+            let pdpt = pml4.get_pdpt_recursive(i_pml4e, &heap_phys_regions);
+            // println!("pdpt: {:p}", pdpt);
+
+            for i_pdpt in 0..pdpt.entries.len() {
+                if pdpt.entries[i_pdpt].present() {
+                    // println!("pd present at {:#x}:{:#x}", i_pml4e, i_pdpt);
+                }
+            }
+        }
+    }
+
+b my_kernel/src/lib.rs:62
+
+FLUSH PAGETABLE BUFFER
+
+at this point we now have a clean entry into phase 2 where memory is working very nicely
+
+Now things to setup:
+- File system
+- processes and threads
+    - context switching
+    - scheduling
+    - user space
+- process synch
+- IPC
+- IRQs and Exceptions, PIC, NMI, APIC, OPIC
+- Clocks, Timers and Counters
+- Basic video
+- IO 
+- Networking?
