@@ -1,7 +1,7 @@
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::page_table::{ PhysPage4KiB, PML4 };
 
-pub const STACK_SIZE: usize = 20 * 1024; // 20 KiB, this should always be a multiple of 4KiB
+pub const STACK_SIZE: usize = 2048 * 1024; // 2048 KiB, this should always be a multiple of 4KiB
 pub const KERN_STACK_TOP: usize = 0xFFFF_F000_0000_0000;
 
 pub fn create_new_stack_and_map(frame_alloc: &mut LinkedListFrameAllocator, pml4: &mut PML4) -> &'static PhysPage4KiB {

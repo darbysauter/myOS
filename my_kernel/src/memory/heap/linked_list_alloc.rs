@@ -1,6 +1,10 @@
 use alloc::alloc::Layout;
 use core::ptr;
 use core::mem;
+use crate::println;
+use crate::alloc::vec::Vec;
+use crate::memory::page_table::PhysPage4KiB;
+use crate::memory::heap::translate_ref_to_virt;
 
 #[derive(Debug)]
 struct ListNode {
@@ -112,6 +116,24 @@ impl LinkedListAllocator {
         let (size, _) = LinkedListAllocator::size_align(layout);
 
         self.add_free_region(ptr as usize, size)
+    }
+
+    pub fn fix_heap_after_remap(&mut self, heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
+        let mut current = &mut self.head;
+        if current as *mut _ as usize & 0xFFFF_0000_0000_0000 == 0 { // needs to be translated
+            current = unsafe { translate_ref_to_virt(heap_regions, current) };
+        }
+        while let Some(ref mut region) = current.next {
+            let mut region = region;
+            println!("region before: {:#x}", region as *mut _ as usize);
+            loop{}
+            if region as *mut _ as usize & 0xFFFF_0000_0000_0000 == 0 { // needs to be translated
+                region = unsafe { translate_ref_to_virt(heap_regions, region) };
+            }
+            println!("region after: {:p}", region);
+            loop{}
+            current = current.next.as_mut().unwrap();
+        }
     }
 }
 

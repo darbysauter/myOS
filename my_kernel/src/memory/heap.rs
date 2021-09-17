@@ -9,7 +9,7 @@ pub mod block_alloc;
 pub mod linked_list_alloc;
 
 pub const HEAP_START: usize = 0xFFFF_A000_0000_0000;
-pub const HEAP_SIZE: usize = 8192 * 1024; // 4096 KiB, this should always be a multiple of 4KiB
+pub const HEAP_SIZE: usize = 8192 * 1024; // 8192 KiB, this should always be a multiple of 4KiB
 
 #[global_allocator]
 static ALLOCATOR: Locked<BlockAllocator> = Locked::new(BlockAllocator::new());
@@ -95,7 +95,7 @@ pub fn init_heap_phase2(frame_alloc: &mut LinkedListFrameAllocator, pages_used: 
 }
 
 // virt to phys
-pub unsafe fn translate_ref_to_phys<'a, T>(heap_regions: &Vec<(&'static PhysPage4KiB, usize)>, object: &'a mut T) -> &'a mut T {
+pub unsafe fn translate_ref_to_phys<'a, T>(heap_regions: &Vec<(& PhysPage4KiB, usize)>, object: &'a mut T) -> &'a mut T {
     let o = object as *const T as usize;
     // println!("orig addr: {:#x}", o);
     let mut offset: usize = (o - HEAP_START) & 0xffff_ffff_ffff_f000;
@@ -203,6 +203,10 @@ pub unsafe fn translate_box_vec<T>(heap_regions: &Vec<(&'static PhysPage4KiB, us
     o = HEAP_START + offset + (o & 0xfff);
 
     o as *mut Vec<T>
+}
+
+pub fn fix_heap_after_remap(heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
+    ALLOCATOR.lock().fix_heap_after_remap(heap_regions);
 }
 
 pub struct Locked<A> {

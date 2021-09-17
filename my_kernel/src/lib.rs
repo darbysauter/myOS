@@ -17,6 +17,7 @@ pub mod memory;
 pub mod elf;
 pub mod init;
 pub mod bootloader_structs;
+pub mod interrupts;
 
 extern crate alloc;
 

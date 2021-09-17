@@ -2,7 +2,7 @@ use crate::init::phase2::phase2_init;
 use crate::println;
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::heap::{ init_heap_phase1, init_heap_phase2, translate_box, 
-    translate_box_vec };
+    translate_box_vec, fix_heap_after_remap };
 use crate::memory::mappings::{ map_heap, map_elf_at_current_mapping, ident_map_vga_buf,
     map_elf_at_new_base, ELF_NEW_BASE, ELF_OLD_BASE, unmap_elf_at_original_mapping };
 use crate::memory::stack::{ create_new_stack_and_map, KERN_STACK_TOP };
@@ -97,6 +97,11 @@ pub extern "sysv64" fn phase_2_transition(pml4: &mut PML4,
     let prog_header_entries: Vec<ProgHeaderEntry> = Box::into_inner(prog_header_entries);
 
     unmap_elf_at_original_mapping(&prog_header_entries, pml4, &heap_phys_regions);
+
+    fix_heap_after_remap(&heap_phys_regions);
+    println!("Round 2");
+    fix_heap_after_remap(&heap_phys_regions);
+    loop{}
 
     phase2_init(pml4, frame_alloc, heap_phys_regions)
 }

@@ -3,6 +3,9 @@ use core::mem;
 use alloc::alloc::GlobalAlloc;
 use crate::memory::heap::linked_list_alloc::LinkedListAllocator;
 use super::Locked;
+use crate::println;
+use crate::alloc::vec::Vec;
+use crate::memory::page_table::PhysPage4KiB;
 
 struct ListNode {
     next: Option<&'static mut ListNode>,
@@ -36,6 +39,26 @@ impl BlockAllocator {
 
     unsafe fn fallback_alloc(&mut self, layout: Layout) -> *mut u8 {
         self.fallback_allocator.alloc(layout)
+    }
+
+    pub fn fix_heap_after_remap(&mut self, heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
+        for i in 0..self.list_heads.len() {
+            if let Some(node) = self.list_heads[i].take() {
+                let mut rev_list: Option<&'static mut ListNode> = None;
+                let mut node = node;
+                println!("head: {:p} idx: {:#x}", node, i);
+                while let Some(next) = node.next.take() {
+                    println!("node: {:p} idx: {:#x}", next, i);
+                    node.next = rev_list;
+                    rev_list = Some(node);
+                    node = next;
+                }
+                node.next = rev_list;
+                rev_list = Some(node);
+                self.list_heads[i] = rev_list;
+            }
+        }
+        self.fallback_allocator.fix_heap_after_remap(heap_regions);
     }
 }
 
@@ -81,6 +104,7 @@ unsafe impl GlobalAlloc for Locked<BlockAllocator> {
                 // verify that block has size and alignment required for storing node
                 assert!(mem::size_of::<ListNode>() <= BLOCK_SIZES[index]);
                 assert!(mem::align_of::<ListNode>() <= BLOCK_SIZES[index]);
+                println!("adding {:p} idx: {:#x}", ptr, index);
                 let new_node_ptr = ptr as *mut ListNode;
                 new_node_ptr.write(new_node);
                 allocator.list_heads[index] = Some(&mut *new_node_ptr);

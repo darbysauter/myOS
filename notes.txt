@@ -106,3 +106,20 @@ Now things to setup:
 - Basic video
 - IO 
 - Networking?
+
+
+Notes about ints and exceptions:
+
+Interrupts - external to processor, or generated using int instruction
+Exception - processor detects error condition
+
+IDT holds both interrupts and exception handlers
+
+exceptions are: Faults, Traps, Aborts
+
+You can call exceptions using int instruction but it will behave as if
+it was an interrupt and will not push any error code.
+
+Fault - can generally be corrected. restores to before the instruction was executed
+Trap - restores to after the instruction was executed
+Abort - should not be restored
