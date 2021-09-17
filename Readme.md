@@ -1,18 +1,29 @@
+# Summary
+
 This OS+Bootloader was used to strengthen my knowledge of Rust, x86, and Operating Systems
 
 The bootloader is written fully in assembly and the kernel in Rust
 
-Build options:
-$ make 		# to build
-$ make run 	# to run in qemu
-$ make debug 	# to wait for gdb to attach
-$ make clean 	# to clean build artifacts
+# Building
 
-Requirements:
+`$ make` to build
+
+`$ make run` to run in qemu
+
+`$ make debug` to wait for gdb to attach
+
+`$ make clean` to clean build artifacts
+
+# Requirements
 Rust (nightly)
+
 nasm
+
 qemu-system-x86_64
+
 python3
+
+# Process
 
 The bootloader will get the processor running in 64 bit mode and identity map all of memory
 
@@ -36,22 +47,30 @@ The phase 2 function will never return. Also to help with the transition I have 
 
 On entry of phase 2 the stack and heap should be setup with at high addresses and with contiguous virtual pages, and the kernel mapped into a high address with the frame allocator containing all of the unused frames.
 
-From this point on we need to setup:
-
+# TODO
 interrupts and exceptions
+
 file system
 processes and threads
+
 IPC
+
 Video
+
 IO
+
 Networking
 
-Current state:
+# Current state
 Trying to figure out how to get an executable that is 100% Position independent, currently there is still GOT, Vtables and string references that have absolute addresses. I could translate these, but it would be cleaner if I did not need to, and I think it is possible: https://github.com/rust-lang/rust/issues/87934#issuecomment-916930145
 
-Lots of inspiration/help from:
+# References
 https://wiki.osdev.org/
+
 https://os.phil-opp.com/
+
 https://github.com/rust-osdev/bootloader
+
 https://github.com/gamozolabs/chocolate_milk
+
 probably others I am missing
