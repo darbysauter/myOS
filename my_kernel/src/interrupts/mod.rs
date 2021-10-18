@@ -1,6 +1,6 @@
 use core::mem;
 use core::marker::PhantomData;
-use crate::println;
+// use crate::println;
 use crate::memory::heap::translate_ref_to_phys;
 use alloc::vec::Vec;
 use crate::memory::page_table::PhysPage4KiB;
@@ -228,7 +228,6 @@ impl IDT {
 
     pub fn set_breakpoint_handler(&mut self, handler: HandlerFunc) -> &mut IDTEntryOptions {
         let addr = handler as usize;
-        println!("addr: {:#x}", addr);
 
         self.table.breakpoint.addr_low = addr as u16;
         self.table.breakpoint.addr_mid = (addr >> 16) as u16;
