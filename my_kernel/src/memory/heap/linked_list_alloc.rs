@@ -1,7 +1,7 @@
 use alloc::alloc::Layout;
 use core::ptr;
 use core::mem;
-use crate::println;
+use crate::{ println, print };
 use crate::alloc::vec::Vec;
 use crate::memory::page_table::PhysPage4KiB;
 use crate::memory::heap::translate_usize_to_virt;
@@ -28,12 +28,14 @@ impl ListNode {
 
 pub struct LinkedListAllocator {
     head: ListNode,
+    pub used_memory: u64,
 }
 
 impl LinkedListAllocator {
     pub const fn new() -> Self {
         LinkedListAllocator {
-            head: ListNode::new(0)
+            head: ListNode::new(0),
+            used_memory: 0,
         }
     }
 
@@ -67,8 +69,20 @@ impl LinkedListAllocator {
         None
     }
 
-    pub fn print_regions(&mut self) {
-        println!("ll alloc head: {:?}", &mut self.head);
+    pub fn print_regions(&mut self) -> u64 {
+        // println!("ll alloc head: {:?}", &mut self.head);
+
+        let mut current = &mut self.head;
+        let mut total_bytes: usize = 0;
+        print!("Linked List Alloc Regions: [");
+        while let Some(ref mut region) = current.next {
+            print!("{:#x}, ", region.size);
+            total_bytes += region.size;
+            current = current.next.as_mut().unwrap();
+        }
+        println!("]");
+        println!("Linked List Alloc Total Size: {:#x}", total_bytes);
+        total_bytes as u64
     }
 
     fn alloc_from_region(region: &ListNode, size: usize, align: usize)
@@ -104,6 +118,7 @@ impl LinkedListAllocator {
         if let Some((region, alloc_start)) = self.find_region(size, align) {
             let alloc_end = alloc_start.checked_add(size).expect("overflow");
             let excess_size = region.end_addr() - alloc_end;
+            self.used_memory += alloc_end as u64 - alloc_start as u64;
             if excess_size > 0 {
                 self.add_free_region(alloc_end, excess_size);
             }
@@ -116,6 +131,7 @@ impl LinkedListAllocator {
     pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
         let (size, _) = LinkedListAllocator::size_align(layout);
 
+        self.used_memory += size as u64;
         self.add_free_region(ptr as usize, size)
     }
 

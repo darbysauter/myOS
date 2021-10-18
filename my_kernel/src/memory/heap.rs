@@ -231,9 +231,12 @@ pub fn fix_heap_after_remap(heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
     ALLOCATOR.lock().fix_heap_after_remap(heap_regions);
 }
 
-
-pub fn print_ll_regions() {
-    ALLOCATOR.lock().print_ll_regions();
+pub fn print_heap() {
+    let ll_alloc_size = ALLOCATOR.lock().print_ll_regions();
+    let block_alloc_size = ALLOCATOR.lock().print_block_regions();
+    let total_bytes = ll_alloc_size + block_alloc_size;
+    println!("Heap Total Free: {:#x} Bytes | {:#} KiB", total_bytes, total_bytes/1024);
+    ALLOCATOR.lock().print_heap_stats();
 }
 
 pub struct Locked<A> {
