@@ -139,6 +139,28 @@ pub unsafe fn translate_ref_to_virt<'a, T>(heap_regions: &Vec<(&PhysPage4KiB, us
     virt_ref
 }
 
+
+pub unsafe fn translate_usize_to_virt(heap_regions: &Vec<(&PhysPage4KiB, usize)>, object: usize) -> usize {
+    let mut o = object;
+    // println!("orig addr: {:#x}", o);
+    let mut offset: usize = 0;
+    for (start_page, num_pages) in heap_regions {
+        let start_page = *start_page as *const PhysPage4KiB as usize;
+        let end_page = start_page + 0x1000 * ((*num_pages) - 1);
+        let o_page = o & 0xffff_ffff_ffff_f000;
+        if o_page >= start_page && o_page <= end_page {
+            // in this region
+            offset += o_page - start_page;
+            break;
+        }
+        offset += num_pages * 0x1000;
+    }
+    o = HEAP_START + offset + (o & 0xfff);
+
+    // println!("new addr: {:#x}", o);
+    o
+}
+
 // phys to virt
 pub unsafe fn translate_box<T>(heap_regions: &Vec<(&'static PhysPage4KiB, usize)>, object: Box<T>) -> *mut T {
     let mut o = Box::<T>::into_raw(object) as *mut Box<T> as *mut T as usize;
@@ -207,6 +229,11 @@ pub unsafe fn translate_box_vec<T>(heap_regions: &Vec<(&'static PhysPage4KiB, us
 
 pub fn fix_heap_after_remap(heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
     ALLOCATOR.lock().fix_heap_after_remap(heap_regions);
+}
+
+
+pub fn print_ll_regions() {
+    ALLOCATOR.lock().print_ll_regions();
 }
 
 pub struct Locked<A> {

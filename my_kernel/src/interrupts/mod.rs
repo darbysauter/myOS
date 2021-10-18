@@ -210,11 +210,11 @@ impl IDT {
     }
 
     pub fn load(&mut self, heap_regions: &Vec<(&PhysPage4KiB, usize)>) {
-        loop{}
+        // loop{}
         unsafe {
             let translated = translate_ref_to_phys(heap_regions, &mut self.table);
+            self.ptr.addr = translated as *const _ as u64;
         }
-        self.ptr.addr = (&self.table) as *const _ as u64;
         self.ptr.limit = (mem::size_of::<InterruptDescriptorTable>() - 1) as u16;
 
         let ptr = (&self.ptr) as *const _ as usize;

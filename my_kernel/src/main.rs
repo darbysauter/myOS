@@ -10,7 +10,6 @@ use my_kernel::{ println, BootInfo, init};
 // We use RDI to pass BootInfo
 #[no_mangle]
 pub extern "sysv64" fn _start(boot_info: &BootInfo) -> ! {
-
     println!("<- (-_-) -> Hello From Rust Kernel!");
 
     init(boot_info)

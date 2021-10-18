@@ -33,6 +33,14 @@ pub struct SecHeaderEntry {
     pub entsize: u64,
 }
 
+#[derive(Debug)]
+#[repr(C)]
+pub struct DynAddrEntry {
+    pub addr: usize, // this address holds the actual address of object (used to look up)
+    pub info: u64,
+    pub points_to: usize, // this is the address of where the actual address would be assuming some base address (0x200000)
+}
+
 pub fn get_loadable_prog_header_entries(boot_info: &BootInfo) -> Vec<ProgHeaderEntry> {
     let e = {
         let ptr = boot_info.elf_location as *const u8;
@@ -142,4 +150,62 @@ pub fn get_global_offset_table(boot_info: &BootInfo) -> &mut [usize] {
         }
     }
     panic!("Could not find GOT");
+}
+pub fn fix_relocatable_addrs(boot_info: &BootInfo, offset: usize) {
+    let e = {
+        let ptr = boot_info.elf_location as *const u8;
+        unsafe { slice::from_raw_parts(ptr, boot_info.elf_size as usize) }
+    };
+
+    let ph_off: usize =
+        u64::from_le_bytes(
+            e.get(0x20..0x28).expect("Couldn't get offset [0]")
+            .try_into().expect("Couldn't get offset [1]"))
+            .try_into().expect("Couldn't get offset [2]");
+
+    let ph_ent_size: u16 =
+        u16::from_le_bytes(
+            e.get(0x36..0x38).expect("Couldn't get ent size [0]")
+            .try_into().expect("Couldn't get ent size [1]"))
+            .try_into().expect("Couldn't get ent size [2]");
+
+    assert_eq!(ph_ent_size as usize, mem::size_of::<ProgHeaderEntry>());
+
+    let ph_ent_num: u16 =
+        u16::from_le_bytes(
+            e.get(0x38..0x3a).expect("Couldn't get ent num [0]")
+            .try_into().expect("Couldn't get ent num [1]"))
+            .try_into().expect("Couldn't get ent num [2]");
+
+    
+
+    let prog_headers = {
+        let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
+        unsafe { slice::from_raw_parts(ptr, ph_ent_num as usize) }
+    };
+
+    for entry in prog_headers {
+        if entry.seg_type == 0x2 { // PT_DYNAMIC
+            let dyn_table: &[DynAddrEntry] = {
+                unsafe { 
+                    let addr = (*((entry.v_addr + 0x28) as *const usize)) as *const DynAddrEntry;
+                    let tbl_size = *((entry.v_addr + 0x38) as *const usize);
+                    let ent_size = *((entry.v_addr + 0x48) as *const usize);
+                    let count = *((entry.v_addr + 0x58) as *const usize);
+                    assert_eq!(ent_size * count, tbl_size);
+                    assert_eq!(ent_size, mem::size_of::<DynAddrEntry>());
+                    slice::from_raw_parts(addr, tbl_size / mem::size_of::<DynAddrEntry>())
+                }
+            };
+            
+            for dyn_addr_entry in dyn_table {
+                let addr = dyn_addr_entry.addr as *mut usize;
+                unsafe {
+                    *addr += offset as usize;
+                }
+            }
+            return;
+        }
+    }
+    panic!("Could not find Relocatable Table");
 }

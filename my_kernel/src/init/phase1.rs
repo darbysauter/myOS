@@ -8,7 +8,7 @@ use crate::memory::mappings::{ map_heap, map_elf_at_current_mapping, ident_map_v
 use crate::memory::stack::{ create_new_stack_and_map, KERN_STACK_TOP };
 use crate::alloc::vec::Vec;
 use crate::alloc::boxed::Box;
-use crate::elf::{ get_loadable_prog_header_entries, ProgHeaderEntry, get_global_offset_table };
+use crate::elf::{ get_loadable_prog_header_entries, ProgHeaderEntry, fix_relocatable_addrs };
 use crate::memory::page_table::{ PML4, PhysPage4KiB };
 use crate::bootloader_structs::BootInfo;
 
@@ -56,12 +56,7 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
         let phase_2_offset = ELF_NEW_BASE - ELF_OLD_BASE;
         let phase_2_entry_point = (phase_2_transition as *const () as usize) + phase_2_offset;
 
-
-        // Adjust GOT -- AFTER WE DO THIS WE CANNOT USE GOT UNTIL HIGHER ADDR MAPPED IN
-        let got = get_global_offset_table(boot_info);
-        for addr in got {
-            *addr += ELF_NEW_BASE - ELF_OLD_BASE;
-        }
+        fix_relocatable_addrs(boot_info, ELF_NEW_BASE - ELF_OLD_BASE);
 
         asm!(
             "mov cr3, {}; mov rsp, {}; push 0; jmp {}",
@@ -99,9 +94,6 @@ pub extern "sysv64" fn phase_2_transition(pml4: &mut PML4,
     unmap_elf_at_original_mapping(&prog_header_entries, pml4, &heap_phys_regions);
 
     fix_heap_after_remap(&heap_phys_regions);
-    println!("Round 2");
-    fix_heap_after_remap(&heap_phys_regions);
-    loop{}
 
     phase2_init(pml4, frame_alloc, heap_phys_regions)
 }

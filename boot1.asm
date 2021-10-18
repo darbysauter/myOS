@@ -570,6 +570,8 @@ load_segment:
     mov edx, [rbx] ; type
     cmp rdx, 1 ; check if PT_LOAD
     jne go_next_ent
+
+pt_load_seg:
     mov edx, [rbx + 4] ; flags ; for now we ignore
     mov rdx, [rbx + 8] ; offset in file
     add rdx, 0x4000000
@@ -637,6 +639,82 @@ done_loading_segments:
     mov rax, 0xdeadbeef ; for some reason this fixes printing
     mov esi, done_loading_seg_str
     call my_vga_print
+
+
+handle_relocations: ; do relocations after other segments copied
+    mov ebx, 0x4000000
+
+    ; phdr table
+    mov rax, [rbx + 0x20] ; phoff
+    movzx rdi, byte [rbx + 0x36] ; phentsize
+    movzx rsi, byte [rbx + 0x38] ; phnum
+    mov rbx, 0x4000000
+    add rbx, rax ; address of phdr table
+    
+    mov rcx, 0
+load_segment_relocation:
+    cmp rcx, rsi
+    je error_64
+
+    push rdi ; push ent size
+    push rsi ; push num of ents
+
+    mov edx, [rbx] ; type
+    cmp rdx, 2 ; check if PT_DYNAMIC
+    jne go_next_ent_relocations
+    
+    mov rdx, [rbx + 8] ; offset in file
+    add rdx, 0x4000000 ; offset in file but where we have it loaded
+
+    ; These offsets might change, so we could check type
+    mov rax, [rdx + 0x28] ; addr of ents
+    mov rsi, [rdx + 0x48] ; ent size
+    mov rcx, [rdx + 0x58] ; ent count
+
+relocation_loop:
+    cmp rcx, 0
+    je done_relocations
+
+    ; do stuff
+    mov rdx, [rax] ; address to apply value
+    mov rdi, [rax + 0x10] ; value to apply
+    mov [rdx], rdi
+
+    add rax, rsi
+    sub rcx, 1
+    jmp relocation_loop
+
+
+go_next_ent_relocations:
+    pop rsi ; pop num of ents
+    pop rdi ; pop ent size
+    add rcx, 1
+    add rbx, rdi ; get next ent
+    jmp load_segment_relocation
+
+done_relocations:
+
+init_bss:
+    mov ebx, 0x4000000
+    mov rax, [rbx + 0x28] ; shoff
+    add rax, 0x4000000
+    mov rcx, rax
+    add rax, 0x350 ; addr
+    add rcx, 0x360 ; size
+
+    mov rax, [rax]
+    mov rcx, [rcx]
+    
+    mov bl, 0
+zero_bss_loop:
+    cmp rcx, 0 ; check if we need to copy any bytes
+    je done_bss
+    sub rcx, 1
+    mov [rax], bl
+    add rax, 1
+    jmp zero_bss_loop
+
+done_bss:
 
 context_switch:
     mov rcx, 0x34000

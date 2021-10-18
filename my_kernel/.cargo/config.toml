@@ -4,4 +4,6 @@ build-std = ["core", "compiler_builtins", "alloc"]
 
 [build]
 target = "x86_64-my_os.json"
-rustflags = ["-Crelocation-model=pic","-Clink-arg=-pie","-Clink-arg=--image-base=0x200000"]
+rustflags = ["-Crelocation-model=pic",
+    "-Clink-arg=-pie",
+    "-Clink-arg=--image-base=0x200000"]

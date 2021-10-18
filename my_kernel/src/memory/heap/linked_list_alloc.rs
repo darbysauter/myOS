@@ -4,7 +4,7 @@ use core::mem;
 use crate::println;
 use crate::alloc::vec::Vec;
 use crate::memory::page_table::PhysPage4KiB;
-use crate::memory::heap::translate_ref_to_virt;
+use crate::memory::heap::translate_usize_to_virt;
 
 #[derive(Debug)]
 struct ListNode {
@@ -52,8 +52,7 @@ impl LinkedListAllocator {
     }
 
     fn find_region(&mut self, size: usize, align: usize)
-        -> Option<(&'static mut ListNode, usize)>
-    {
+        -> Option<(&'static mut ListNode, usize)> {
         let mut current = &mut self.head;
         while let Some(ref mut region) = current.next {
             if let Ok(alloc_start) = Self::alloc_from_region(&region, size, align) {
@@ -68,10 +67,12 @@ impl LinkedListAllocator {
         None
     }
 
+    pub fn print_regions(&mut self) {
+        println!("ll alloc head: {:?}", &mut self.head);
+    }
 
     fn alloc_from_region(region: &ListNode, size: usize, align: usize)
-        -> Result<usize, ()>
-    {
+        -> Result<usize, ()> {
         let alloc_start = align_up(region.start_addr(), align);
         let alloc_end = alloc_start.checked_add(size).ok_or(())?;
 
@@ -120,18 +121,15 @@ impl LinkedListAllocator {
 
     pub fn fix_heap_after_remap(&mut self, heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
         let mut current = &mut self.head;
-        if current as *mut _ as usize & 0xFFFF_0000_0000_0000 == 0 { // needs to be translated
-            current = unsafe { translate_ref_to_virt(heap_regions, current) };
-        }
         while let Some(ref mut region) = current.next {
-            let mut region = region;
-            println!("region before: {:#x}", region as *mut _ as usize);
-            loop{}
-            if region as *mut _ as usize & 0xFFFF_0000_0000_0000 == 0 { // needs to be translated
-                region = unsafe { translate_ref_to_virt(heap_regions, region) };
+            unsafe {
+                let x = region as *mut _ as usize as *mut usize;
+                if *x & 0xFFFF_0000_0000_0000 == 0 { // needs to be translated
+                    // println!("ADDR2: {:#x}", *x);
+                    *x = translate_usize_to_virt(heap_regions, *x);
+                    // println!("ADDR2: {:#x}", *x);
+                }
             }
-            println!("region after: {:p}", region);
-            loop{}
             current = current.next.as_mut().unwrap();
         }
     }

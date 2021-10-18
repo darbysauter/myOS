@@ -4,6 +4,7 @@ use crate::memory::page_table::{ PML4, PhysPage4KiB };
 use crate::alloc::vec::Vec;
 use crate::interrupts::*;
 use alloc::boxed::Box;
+use crate::memory::heap::print_ll_regions;
 
 // At this point we have elf loadable segments, heap and stack all mapped into high memory
 // The Page tables are on the heap.
@@ -16,9 +17,10 @@ pub fn phase2_init(
 
     println!("frame alloc has {:#x} free pages", frame_alloc.frame_count);
 
+    print_ll_regions();
     let mut idt = Box::new(IDT::new());
-    loop{}
     idt.set_breakpoint_handler(bp_handler);
+    loop{}
     idt.load(&heap_phys_regions);
 
     unsafe {
