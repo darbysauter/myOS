@@ -18,7 +18,6 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
     };
 
     let (heap_phys, num_pages_1) = init_heap_phase1(&mut frame_allocator);
-
     let mut heap_phys_regions = init_heap_phase2(&mut frame_allocator, num_pages_1);
     heap_phys_regions.push((heap_phys, num_pages_1));
 

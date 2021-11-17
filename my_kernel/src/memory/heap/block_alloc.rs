@@ -18,7 +18,6 @@ const BLOCK_SIZES: &[usize] = &[8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 pub struct BlockAllocator {
     list_heads: [Option<&'static mut ListNode>; BLOCK_SIZES.len()],
     fallback_allocator: LinkedListAllocator,
-    pub used_memory: u64,
     pub total_memory: u64,
 }
 
@@ -29,15 +28,32 @@ impl BlockAllocator {
         BlockAllocator {
             list_heads: [EMPTY; BLOCK_SIZES.len()],
             fallback_allocator: LinkedListAllocator::new(),
-            used_memory: 0,
             total_memory: 0,
         }
     }
     
     pub fn print_heap_stats(&mut self) {
-        let total_used_bytes = self.used_memory + self.fallback_allocator.used_memory;
+        let total_used_bytes = self.fallback_allocator.used_memory;
         println!("Heap Total Used(tracked): {:#x} Bytes | {:#} KiB", total_used_bytes, total_used_bytes/1024);
         println!("Heap Total Size(tracked): {:#x} Bytes | {:#} KiB", self.total_memory, self.total_memory/1024);
+    }
+    
+    pub fn heap_sanity_check(&mut self, free_bytes: u64) {
+        let total_used_bytes = self.fallback_allocator.used_memory;
+        let total_free_bytes = self.total_memory - total_used_bytes;
+        if free_bytes != total_free_bytes {
+            let dif: u64;
+            if total_free_bytes > free_bytes {
+                dif = total_free_bytes - free_bytes;
+            } else {
+                dif = free_bytes - total_free_bytes;
+            }
+            println!("tracked free bytes: {:#x} free according to allocators: {:#x} dif: {:#x}", 
+                total_free_bytes, free_bytes, dif);
+            panic!("Heap disagreed");
+        } else {
+            println!("Heap Sanity Check Passed");
+        }
     }
 
     pub fn print_block_regions(&mut self) -> u64 {
@@ -60,9 +76,30 @@ impl BlockAllocator {
         }
         total_bytes as u64
     }
+
+    pub fn get_block_regions(&mut self) -> u64 {
+        let mut idx = 0;
+        let mut total_bytes = 0;
+        for list in self.list_heads.iter() {
+            let mut list = list;
+            let mut num = 0;
+            while let Some(l) = list {
+                list = &l.next;
+                num += 1;
+            }
+            let bytes = num * BLOCK_SIZES[idx];
+            total_bytes += bytes;
+            idx += 1;
+        }
+        total_bytes as u64
+    }
     
     pub fn print_ll_regions(&mut self) -> u64 {
         self.fallback_allocator.print_regions()
+    }
+    
+    pub fn get_ll_regions(&mut self) -> u64 {
+        self.fallback_allocator.get_regions()
     }
 
     pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
@@ -113,9 +150,10 @@ unsafe impl GlobalAlloc for Locked<BlockAllocator> {
         let mut allocator = self.lock();
         match list_index(&layout) {
             Some(index) => {
-                allocator.used_memory += BLOCK_SIZES[index] as u64;
                 match allocator.list_heads[index].take() {
                     Some(node) => {
+                        // println!("increased [block]: {:#x} cur: {:#x}", BLOCK_SIZES[index], allocator.fallback_allocator.used_memory);
+                        allocator.fallback_allocator.used_memory += BLOCK_SIZES[index] as u64;
                         allocator.list_heads[index] = node.next.take();
                         node as *mut ListNode as *mut u8
                     }
@@ -138,7 +176,8 @@ unsafe impl GlobalAlloc for Locked<BlockAllocator> {
         let mut allocator = self.lock();
         match list_index(&layout) {
             Some(index) => {
-                allocator.used_memory -= BLOCK_SIZES[index] as u64;
+                // println!("decreased [block]: {:#x} cur: {:#x}", BLOCK_SIZES[index], allocator.fallback_allocator.used_memory);
+                allocator.fallback_allocator.used_memory -= BLOCK_SIZES[index] as u64;
                 let new_node = ListNode {
                     next: allocator.list_heads[index].take(),
                 };

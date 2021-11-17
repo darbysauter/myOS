@@ -1,5 +1,3 @@
-use crate::println;
-
 #[repr(C, packed)]
 pub struct GlobalDescriptorTable {
     size: u16,
@@ -11,6 +9,7 @@ pub struct GlobalDescriptorTable {
 }
 
 impl GlobalDescriptorTable {
+    #[allow(unaligned_references)]
     pub fn new() -> Self {
         let mut gdt = GlobalDescriptorTable {
             size: 0,
@@ -24,13 +23,11 @@ impl GlobalDescriptorTable {
         gdt
     }
 
+    #[allow(unaligned_references)]
     pub fn load(&mut self) {
-        unsafe {
-            self.addr = &self.null_seg as *const _ as u64;
-        }
+        self.addr = &self.null_seg as *const _ as u64;
 
         let ptr = self as *const _ as usize;
-        // loop{}
         if ptr % 0x8 != 0 {
             panic!("GDT pointer not aligned");
         }

@@ -1,10 +1,6 @@
 use core::mem;
 use core::fmt;
 use core::marker::PhantomData;
-use crate::println;
-use crate::memory::heap::translate_ref_to_phys;
-use alloc::vec::Vec;
-use crate::memory::page_table::PhysPage4KiB;
 
 // abort - trap gate that saves unrelated IP (basically NMI and such)
 // fault - trap gate that saves the current IP
@@ -223,14 +219,9 @@ impl IDT {
         }
     }
 
-    pub fn load(&mut self, heap_regions: &Vec<(&PhysPage4KiB, usize)>) {
-        // let phys = unsafe {
-        //     translate_ref_to_phys(heap_regions, &mut self.table);
-        // };
-        unsafe {
-            let ptr = &self.table as *const _ as u64;
-            self.ptr.addr = ptr;
-        }
+    pub fn load(&mut self) {
+        let ptr = &self.table as *const _ as u64;
+        self.ptr.addr = ptr;
         self.ptr.limit = (mem::size_of::<InterruptDescriptorTable>() - 1) as u16;
 
         let ptr = (&self.ptr) as *const _ as usize;

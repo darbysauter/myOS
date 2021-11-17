@@ -5,7 +5,7 @@ use crate::alloc::vec::Vec;
 use crate::interrupts::*;
 use crate::gdt::*;
 use alloc::boxed::Box;
-use crate::memory::heap::print_heap;
+use crate::memory::heap::{ print_heap, heap_sanity_check };
 
 // At this point we have elf loadable segments, heap and stack all mapped into high memory
 // The Page tables are on the heap.
@@ -14,10 +14,12 @@ use crate::memory::heap::print_heap;
 pub fn phase2_init(
     _pml4: &mut PML4, 
     frame_alloc: LinkedListFrameAllocator, 
-    heap_phys_regions: Vec<(&PhysPage4KiB, usize)> ) -> ! {
+    _heap_phys_regions: Vec<(&PhysPage4KiB, usize)> ) -> ! {
 
     println!("frame alloc has {:#x} free pages", frame_alloc.frame_count);
 
+    heap_sanity_check();
+    print_heap();
     // POSSIBLY OVER FREEING, NOT GOOD BECAUSE STUFF IN USE MIGHT BE ON THE FREE LISTS
     // LIKELY STUFF MIGHT BE FREED DURING THE REMAPPING 
     let mut gdt = Box::new(GlobalDescriptorTable::new());
@@ -28,7 +30,7 @@ pub fn phase2_init(
     let mut idt = Box::new(IDT::new());
     idt.set_breakpoint_handler(bp_handler);
     idt.set_divide_error_handler(de_handler);
-    idt.load(&heap_phys_regions);
+    idt.load();
 
     // unsafe {
     //     asm!("int3");

@@ -54,12 +54,16 @@ impl LinkedListAllocator {
     }
 
     fn find_region(&mut self, size: usize, align: usize)
-        -> Option<(&'static mut ListNode, usize)> {
+        -> Option<(&'static mut ListNode, usize, Option<(usize, usize)>)> {
         let mut current = &mut self.head;
         while let Some(ref mut region) = current.next {
             if let Ok(alloc_start) = Self::alloc_from_region(&region, size, align) {
                 let next = region.next.take();
-                let ret = Some((current.next.take().unwrap(), alloc_start));
+                let mut beginning_excess: Option<(usize, usize)> = None;
+                if region.start_addr() < alloc_start {
+                    beginning_excess = Some((region.start_addr(), alloc_start - region.start_addr()));
+                }
+                let ret = Some((current.next.take().unwrap(), alloc_start, beginning_excess));
                 current.next = next;
                 return ret;
             } else {
@@ -70,8 +74,6 @@ impl LinkedListAllocator {
     }
 
     pub fn print_regions(&mut self) -> u64 {
-        // println!("ll alloc head: {:?}", &mut self.head);
-
         let mut current = &mut self.head;
         let mut total_bytes: usize = 0;
         print!("Linked List Alloc Regions: [");
@@ -82,6 +84,16 @@ impl LinkedListAllocator {
         }
         println!("]");
         println!("Linked List Alloc Total Size: {:#x}", total_bytes);
+        total_bytes as u64
+    }
+
+    pub fn get_regions(&mut self) -> u64 {
+        let mut current = &mut self.head;
+        let mut total_bytes: usize = 0;
+        while let Some(ref mut region) = current.next {
+            total_bytes += region.size;
+            current = current.next.as_mut().unwrap();
+        }
         total_bytes as u64
     }
 
@@ -115,12 +127,16 @@ impl LinkedListAllocator {
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
         let (size, align) = LinkedListAllocator::size_align(layout);
 
-        if let Some((region, alloc_start)) = self.find_region(size, align) {
+        if let Some((region, alloc_start, excess)) = self.find_region(size, align) {
             let alloc_end = alloc_start.checked_add(size).expect("overflow");
             let excess_size = region.end_addr() - alloc_end;
+            // println!("increased [LL]: {:#x} cur: {:#x}", alloc_end - alloc_start, self.used_memory);
             self.used_memory += alloc_end as u64 - alloc_start as u64;
             if excess_size > 0 {
                 self.add_free_region(alloc_end, excess_size);
+            }
+            if let Some((start, size)) = excess {
+                self.add_free_region(start, size);
             }
             alloc_start as *mut u8
         } else {
@@ -131,7 +147,8 @@ impl LinkedListAllocator {
     pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
         let (size, _) = LinkedListAllocator::size_align(layout);
 
-        self.used_memory += size as u64;
+        // println!("decreased [LL]: {:#x} cur: {:#x}", size, self.used_memory);
+        self.used_memory -= size as u64;
         self.add_free_region(ptr as usize, size)
     }
 

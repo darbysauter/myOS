@@ -57,7 +57,6 @@ pub fn init_heap_phase2(frame_alloc: &mut LinkedListFrameAllocator, pages_used: 
     if increase_size == 0 {
         return phys_regions;
     }
-    println!("Extending heap with size {} KiB", increase_size/1024);
     if HEAP_START % 0x1000 != 0 || HEAP_SIZE % 0x1000 != 0 {
         panic!("HEAP not 4KiB aligned");
     }
@@ -237,6 +236,13 @@ pub fn print_heap() {
     let total_bytes = ll_alloc_size + block_alloc_size;
     println!("Heap Total Free: {:#x} Bytes | {:#} KiB", total_bytes, total_bytes/1024);
     ALLOCATOR.lock().print_heap_stats();
+}
+
+pub fn heap_sanity_check() {
+    let ll_alloc_size = ALLOCATOR.lock().get_ll_regions();
+    let block_alloc_size = ALLOCATOR.lock().get_block_regions();
+    let total_bytes = ll_alloc_size + block_alloc_size;
+    ALLOCATOR.lock().heap_sanity_check(total_bytes);
 }
 
 pub struct Locked<A> {
