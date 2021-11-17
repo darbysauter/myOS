@@ -1,6 +1,10 @@
+pub mod interrupt_handlers;
+
 use core::mem;
 use core::fmt;
 use core::marker::PhantomData;
+use alloc::boxed::Box;
+use crate::interrupts::interrupt_handlers::*;
 
 // abort - trap gate that saves unrelated IP (basically NMI and such)
 // fault - trap gate that saves the current IP
@@ -185,7 +189,7 @@ pub type HandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFra
 pub type DivergingHandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64) -> !;
 
 impl IDT {
-    pub fn new() -> Self {
+    fn new() -> Self {
         IDT {
             ptr: InterruptDescriptorTablePtr {
                 limit: 0,
@@ -255,5 +259,15 @@ impl IDT {
         self.table.divide_error.gdt_selector = 0x08;
         self.table.divide_error.options.set_present(true);
         &mut self.table.divide_error.options
+    }
+
+    pub fn create_idt_on_heap() -> Box<IDT> {
+        Box::new(IDT::new())
+    }
+
+    pub fn setup_idt(idt: &mut Box<IDT>) {
+        idt.set_breakpoint_handler(bp_handler);
+        idt.set_divide_error_handler(de_handler);
+        idt.load();
     }
 }

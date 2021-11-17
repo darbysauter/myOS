@@ -4,7 +4,6 @@ use crate::memory::page_table::{ PML4, PhysPage4KiB };
 use crate::alloc::vec::Vec;
 use crate::interrupts::*;
 use crate::gdt::*;
-use alloc::boxed::Box;
 use crate::memory::heap::{ print_heap, heap_sanity_check };
 
 // At this point we have elf loadable segments, heap and stack all mapped into high memory
@@ -16,46 +15,23 @@ pub fn phase2_init(
     frame_alloc: LinkedListFrameAllocator, 
     _heap_phys_regions: Vec<(&PhysPage4KiB, usize)> ) -> ! {
 
+    // memory diagnostics
     println!("frame alloc has {:#x} free pages", frame_alloc.frame_count);
-
     heap_sanity_check();
     print_heap();
-    // POSSIBLY OVER FREEING, NOT GOOD BECAUSE STUFF IN USE MIGHT BE ON THE FREE LISTS
-    // LIKELY STUFF MIGHT BE FREED DURING THE REMAPPING 
-    let mut gdt = Box::new(GlobalDescriptorTable::new());
-    gdt.load();
-    gdt.reload_segments();
+    
+    // create new gdt and load it
+    let mut gdt = GDT::create_gdt_on_heap();
+    GDT::setup_gdt(&mut gdt);
 
-
-    let mut idt = Box::new(IDT::new());
-    idt.set_breakpoint_handler(bp_handler);
-    idt.set_divide_error_handler(de_handler);
-    idt.load();
+    // create new idt and load it
+    let mut idt = IDT::create_idt_on_heap();
+    IDT::setup_idt(&mut idt);
 
     // unsafe {
     //     asm!("int3");
     // }
 
-    // unsafe {
-    //     asm!(   "mov edx, 0",
-    //             "mov eax, 0x8003",
-    //             "mov ecx, 0",
-    //             "div ecx");
-    // }
-
     println!("We didn't die! :)");
     loop {}
-}
-
-extern "x86-interrupt" fn bp_handler(sf: InterruptStackFrame)
-{
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", sf);
-    loop{}
-}
-
-
-extern "x86-interrupt" fn de_handler(sf: InterruptStackFrame)
-{
-    println!("EXCEPTION: DIVIDE\n{:#?}", sf);
-    loop{}
 }

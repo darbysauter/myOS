@@ -1,5 +1,7 @@
+use alloc::boxed::Box;
+
 #[repr(C, packed)]
-pub struct GlobalDescriptorTable {
+pub struct GDT {
     size: u16,
     addr: u64,
     null_seg: u64,
@@ -8,10 +10,10 @@ pub struct GlobalDescriptorTable {
     end_seg: u64, // just used to get size of all segments
 }
 
-impl GlobalDescriptorTable {
+impl GDT {
     #[allow(unaligned_references)]
-    pub fn new() -> Self {
-        let mut gdt = GlobalDescriptorTable {
+    fn new() -> Self {
+        let mut gdt = GDT {
             size: 0,
             addr: 0,
             null_seg: 0,
@@ -46,5 +48,14 @@ impl GlobalDescriptorTable {
                 "mov gs, ax",
                 "mov ss, ax"); // TODO: reload CS register
         }
+    }
+
+    pub fn create_gdt_on_heap() -> Box<GDT> {
+        Box::new(GDT::new())
+    }
+
+    pub fn setup_gdt(gdt: &mut Box<GDT>) {
+        gdt.load();
+        gdt.reload_segments();
     }
 }
