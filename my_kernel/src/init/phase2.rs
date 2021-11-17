@@ -3,6 +3,7 @@ use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::page_table::{ PML4, PhysPage4KiB };
 use crate::alloc::vec::Vec;
 use crate::interrupts::*;
+use crate::gdt::*;
 use alloc::boxed::Box;
 use crate::memory::heap::print_heap;
 
@@ -17,35 +18,42 @@ pub fn phase2_init(
 
     println!("frame alloc has {:#x} free pages", frame_alloc.frame_count);
 
-    print_heap();
-    for i in 0..100_000 {
-        let b = Box::new(1);
-        let b1 = Box::new(1);
-        let b2 = Box::new(1);
-        let b3 = Box::new(1);
-        let b4 = Box::new(1);
-        let b5 = Box::new(1);
-        let b6 = Box::new(1);
-        let b7 = Box::new(1);
-        let b8 = Box::new(1);
-    }
-    print_heap();
+    // POSSIBLY OVER FREEING, NOT GOOD BECAUSE STUFF IN USE MIGHT BE ON THE FREE LISTS
+    // LIKELY STUFF MIGHT BE FREED DURING THE REMAPPING 
+    let mut gdt = Box::new(GlobalDescriptorTable::new());
+    gdt.load();
+    gdt.reload_segments();
+
+
     let mut idt = Box::new(IDT::new());
     idt.set_breakpoint_handler(bp_handler);
-    loop{}
+    idt.set_divide_error_handler(de_handler);
     idt.load(&heap_phys_regions);
 
-    unsafe {
-        asm!("int3");
-    }
+    // unsafe {
+    //     asm!("int3");
+    // }
+
+    // unsafe {
+    //     asm!(   "mov edx, 0",
+    //             "mov eax, 0x8003",
+    //             "mov ecx, 0",
+    //             "div ecx");
+    // }
 
     println!("We didn't die! :)");
     loop {}
 }
 
-extern "x86-interrupt" fn bp_handler(
-    stack_frame: InterruptStackFramePtr)
+extern "x86-interrupt" fn bp_handler(sf: InterruptStackFrame)
 {
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    println!("EXCEPTION: BREAKPOINT\n{:#?}", sf);
+    loop{}
+}
+
+
+extern "x86-interrupt" fn de_handler(sf: InterruptStackFrame)
+{
+    println!("EXCEPTION: DIVIDE\n{:#?}", sf);
     loop{}
 }

@@ -29,7 +29,7 @@ clean:
 	rm -rf build $(bin)/boot.bin
 
 run: all
-	qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -m size=4096 -d int -M smm=off -monitor stdio
+	qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -m size=4096 -M smm=off -monitor stdio
 
 # -monitor stdio
 # -no-reboot

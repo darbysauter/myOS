@@ -1,6 +1,7 @@
 use core::mem;
+use core::fmt;
 use core::marker::PhantomData;
-// use crate::println;
+use crate::println;
 use crate::memory::heap::translate_ref_to_phys;
 use alloc::vec::Vec;
 use crate::memory::page_table::PhysPage4KiB;
@@ -19,13 +20,26 @@ use crate::memory::page_table::PhysPage4KiB;
 // continuation point of view... It is a complete naming mess.
 
 
-#[derive(Debug)]
-#[repr(C)]
-pub struct InterruptStackFramePtr {
-    inner: InterruptStackFrame,
+// #[derive(Debug)]
+// #[repr(C)]
+// pub struct InterruptStackFramePtr {
+//     inner: InterruptStackFrame,
+// }
+
+
+impl fmt::Debug for InterruptStackFrame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!(
+            "StackFrame[\n    RIP: {:#x}\n    CS: {:#x}\n    EFLAGS: {:#x}\n    RSP: {:#x}\n    SS: {:#x}\n]", 
+            self.rip,
+            self.cs, 
+            self.eflags, 
+            self.rsp,
+            self.ss))
+    }
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 #[repr(C)]
 pub struct InterruptStackFrame {
     pub rip: u64,
@@ -168,11 +182,11 @@ pub struct IDT {
     table: InterruptDescriptorTable,
 }
 
-pub type HandlerFunc = extern "x86-interrupt" fn(InterruptStackFramePtr);
-pub type DivergingHandlerFunc = extern "x86-interrupt" fn(InterruptStackFramePtr) -> !;
-pub type PageFaultHandlerFunc = extern "x86-interrupt" fn(_: InterruptStackFramePtr, error: u64);
-pub type HandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFramePtr, error: u64);
-pub type DivergingHandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFramePtr, error: u64) -> !;
+pub type HandlerFunc = extern "x86-interrupt" fn(InterruptStackFrame);
+pub type DivergingHandlerFunc = extern "x86-interrupt" fn(InterruptStackFrame) -> !;
+pub type PageFaultHandlerFunc = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64);
+pub type HandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64);
+pub type DivergingHandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64) -> !;
 
 impl IDT {
     pub fn new() -> Self {
@@ -210,10 +224,12 @@ impl IDT {
     }
 
     pub fn load(&mut self, heap_regions: &Vec<(&PhysPage4KiB, usize)>) {
-        // loop{}
+        // let phys = unsafe {
+        //     translate_ref_to_phys(heap_regions, &mut self.table);
+        // };
         unsafe {
-            let translated = translate_ref_to_phys(heap_regions, &mut self.table);
-            self.ptr.addr = translated as *const _ as u64;
+            let ptr = &self.table as *const _ as u64;
+            self.ptr.addr = ptr;
         }
         self.ptr.limit = (mem::size_of::<InterruptDescriptorTable>() - 1) as u16;
 
@@ -236,5 +252,17 @@ impl IDT {
         self.table.breakpoint.gdt_selector = 0x08;
         self.table.breakpoint.options.set_present(true);
         &mut self.table.breakpoint.options
+    }
+
+    pub fn set_divide_error_handler(&mut self, handler: HandlerFunc) -> &mut IDTEntryOptions {
+        let addr = handler as usize;
+
+        self.table.divide_error.addr_low = addr as u16;
+        self.table.divide_error.addr_mid = (addr >> 16) as u16;
+        self.table.divide_error.addr_high = (addr >> 32) as u32;
+
+        self.table.divide_error.gdt_selector = 0x08;
+        self.table.divide_error.options.set_present(true);
+        &mut self.table.divide_error.options
     }
 }
