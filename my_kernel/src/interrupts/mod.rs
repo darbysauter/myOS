@@ -1,5 +1,6 @@
 pub mod interrupt_handlers;
 
+use crate::println;
 use core::mem;
 use core::fmt;
 use core::marker::PhantomData;
@@ -25,6 +26,12 @@ use crate::interrupts::interrupt_handlers::*;
 // pub struct InterruptStackFramePtr {
 //     inner: InterruptStackFrame,
 // }
+
+pub fn enable_hardware_interrupts() {
+    unsafe {
+        asm!("sti");
+    }
+}
 
 
 impl fmt::Debug for InterruptStackFrame {
@@ -188,6 +195,11 @@ pub type PageFaultHandlerFunc = extern "x86-interrupt" fn(_: InterruptStackFrame
 pub type HandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64);
 pub type DivergingHandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64) -> !;
 
+#[repr(usize)]
+pub enum ExtraInterrupts {
+    ApicTimer = 32,
+}
+
 impl IDT {
     fn new() -> Self {
         IDT {
@@ -261,6 +273,19 @@ impl IDT {
         &mut self.table.divide_error.options
     }
 
+    pub fn set_extra_handler(&mut self, handler: HandlerFunc, index: ExtraInterrupts) -> &mut IDTEntryOptions {
+        let addr = handler as usize;
+        let index = index as usize - 32;
+
+        self.table.extra[index].addr_low = addr as u16;
+        self.table.extra[index].addr_mid = (addr >> 16) as u16;
+        self.table.extra[index].addr_high = (addr >> 32) as u32;
+
+        self.table.extra[index].gdt_selector = 0x08;
+        self.table.extra[index].options.set_present(true);
+        &mut self.table.extra[index].options
+    }
+
     pub fn create_idt_on_heap() -> Box<IDT> {
         Box::new(IDT::new())
     }
@@ -268,6 +293,7 @@ impl IDT {
     pub fn setup_idt(idt: &mut Box<IDT>) {
         idt.set_breakpoint_handler(bp_handler);
         idt.set_divide_error_handler(de_handler);
+        idt.set_extra_handler(apic_timer_handler, ExtraInterrupts::ApicTimer);
         idt.load();
     }
 }

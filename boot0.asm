@@ -46,7 +46,7 @@ read_sector:
     mov ch, 0 ; cyl 0
     mov dh, 0 ; head 0
               ; boot0 is on sec 0
-    mov cl, 2 ; boot 1 is on sec 1 but range is 1-63
+    mov cl, 2 ; boot 1 is on sec 1 but range is 1-63 (not 0 indexed)
     mov al, 0x10 ; sec to read 0x10 sectors or 8192 bytes
     int 0x13
 

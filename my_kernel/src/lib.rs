@@ -19,6 +19,8 @@ pub mod init;
 pub mod bootloader_structs;
 pub mod interrupts;
 pub mod gdt;
+pub mod apic;
+pub mod cpu;
 
 extern crate alloc;
 

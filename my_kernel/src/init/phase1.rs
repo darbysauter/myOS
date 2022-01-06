@@ -11,6 +11,7 @@ use crate::alloc::boxed::Box;
 use crate::elf::{ get_loadable_prog_header_entries, ProgHeaderEntry, fix_relocatable_addrs };
 use crate::memory::page_table::{ PML4, PhysPage4KiB };
 use crate::bootloader_structs::BootInfo;
+use crate::apic::{ check_apic, get_apic_base, ident_map_apic_page };
 
 pub fn phase1_init(boot_info: &BootInfo) -> ! {
     let mut frame_allocator = unsafe {
@@ -31,6 +32,16 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
         map_elf_at_current_mapping(boot_info, pml4);
         map_elf_at_new_base(boot_info, pml4);
         ident_map_vga_buf(pml4);
+
+        if check_apic() {
+            println!("APIC AVALIBLE");
+        } else {
+            println!("APIC NOT AVALIBLE");
+        }
+
+        let apic_base = get_apic_base();
+
+        ident_map_apic_page(apic_base, pml4);
 
         // NEED TO TRANSLATE ALL HEAP ADDRESSES TO NEW HEAP LOCATION
         // We have the pagetable on heap

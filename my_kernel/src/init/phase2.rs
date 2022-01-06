@@ -5,6 +5,8 @@ use crate::alloc::vec::Vec;
 use crate::interrupts::*;
 use crate::gdt::*;
 use crate::memory::heap::{ print_heap, heap_sanity_check };
+use crate::apic::{ get_apic_base, set_apic_base, enable_apic, start_apic_timer, 
+    set_apic_tpr, disable_pic };
 
 // At this point we have elf loadable segments, heap and stack all mapped into high memory
 // The Page tables are on the heap.
@@ -32,6 +34,16 @@ pub fn phase2_init(
     //     asm!("int3");
     // }
 
+    let apic_base = get_apic_base();
+    set_apic_base(apic_base);
+    unsafe {
+        enable_apic(apic_base);
+        set_apic_tpr(apic_base, 0);
+    }
+    disable_pic();
+    enable_hardware_interrupts();
+    start_apic_timer(apic_base);
+    
     println!("We didn't die! :)");
     loop {}
 }

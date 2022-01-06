@@ -144,7 +144,7 @@ fn list_index(layout: &Layout) -> Option<usize> {
     BLOCK_SIZES.iter().position(|&s| s >= required_block_size)
 }
 
-
+// Think about how this handles non aligned allocations
 unsafe impl GlobalAlloc for Locked<BlockAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut allocator = self.lock();
