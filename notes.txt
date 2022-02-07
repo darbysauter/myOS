@@ -123,3 +123,5 @@ it was an interrupt and will not push any error code.
 Fault - can generally be corrected. restores to before the instruction was executed
 Trap - restores to after the instruction was executed
 Abort - should not be restored
+
+use the RTC/CMOS timer to keep track of real time (the system timer tick)

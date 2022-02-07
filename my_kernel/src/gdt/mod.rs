@@ -17,8 +17,10 @@ impl GDT {
             size: 0,
             addr: 0,
             null_seg: 0,
-            code_seg: 0x00209A0000000000,
-            data_seg: 0x0000920000000000,
+            kern_code_seg: 0x00209A0000000000,
+            kern_data_seg: 0x0000920000000000,
+            user_code_seg: 0x00209A0000000000,
+            user_data_seg: 0x0000920000000000,
             end_seg: 0,
         };
         gdt.size = (&gdt.end_seg as *const _ as usize - &gdt.null_seg as *const _ as usize) as u16;
