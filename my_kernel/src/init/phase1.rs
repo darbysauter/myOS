@@ -1,7 +1,7 @@
 use crate::init::phase2::phase2_init;
 use crate::println;
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
-use crate::memory::heap::{ init_heap_phase1, init_heap_phase2, translate_box, 
+use crate::memory::heap::{ init_heap_phase1, init_heap_phase2, translate_box,
     translate_box_vec, fix_heap_after_remap };
 use crate::memory::mappings::{ map_heap, map_elf_at_current_mapping, ident_map_vga_buf,
     map_elf_at_new_base, ELF_NEW_BASE, ELF_OLD_BASE, unmap_elf_at_original_mapping };
@@ -86,8 +86,8 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
 // Arguments are passed in order of:
 // RDI, RSI, RDX, RCX, R8, R9
 #[no_mangle]
-pub extern "sysv64" fn phase_2_transition(pml4: &mut PML4, 
-    heap_phys_regions: *mut Vec<(&PhysPage4KiB, usize)>,
+pub extern "sysv64" fn phase_2_transition(pml4: &mut PML4,
+    heap_phys_regions: *mut Vec<(&'static PhysPage4KiB, usize)>,
     frame_alloc: *mut LinkedListFrameAllocator,
     prog_header_entries: *mut Vec<ProgHeaderEntry>) -> ! {
     println!("Entering Phase 2!");
@@ -96,7 +96,7 @@ pub extern "sysv64" fn phase_2_transition(pml4: &mut PML4,
     let frame_alloc = Box::into_inner(frame_alloc);
 
     let heap_phys_regions = unsafe { Box::from_raw(heap_phys_regions) };
-    let heap_phys_regions: Vec<(&PhysPage4KiB, usize)> = Box::into_inner(heap_phys_regions);
+    let heap_phys_regions: Vec<(&'static PhysPage4KiB, usize)> = Box::into_inner(heap_phys_regions);
 
     let prog_header_entries = unsafe { Box::from_raw(prog_header_entries) };
     let prog_header_entries: Vec<ProgHeaderEntry> = Box::into_inner(prog_header_entries);

@@ -6,7 +6,7 @@ use core::mem;
 use alloc::vec::Vec;
 use crate::memory::heap::{ HEAP_START, translate_ref_to_phys, translate_ref_to_virt };
 
-// Assumes IA-32e Paging and CR4.PCIDE = 0 
+// Assumes IA-32e Paging and CR4.PCIDE = 0
 // No support for 1GiB Pages
 
 const PAGE_TABLE_SIZE: usize = 512;
@@ -33,8 +33,8 @@ impl PML4 {
         if let Some(heap_regions) = heap_regions {
             pml4_recur = translate_ref_to_phys(heap_regions, pml4_recur);
         }
-        pml4.add(RECUR_INDEX, pml4_recur, true, false);
-        
+        pml4.add(RECUR_INDEX, pml4_recur, true, true);
+
         pml4
     }
 
@@ -59,7 +59,7 @@ impl PML4 {
         self.entries[index].data = data as u64;
     }
 
-    pub unsafe fn map_frame_4k(&mut self, paddr: usize, 
+    pub unsafe fn map_frame_4k(&mut self, paddr: usize,
         vaddr: usize, writable: bool, user_accessable: bool,
         heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>) {
 
@@ -85,7 +85,7 @@ impl PML4 {
             } else {
                 &(*virt_pdpt)
             };
-            self.add(pml4_ind, phys_pdpt, writable, false);
+            self.add(pml4_ind, phys_pdpt, writable, true);
             virt_pdpt
         };
         let pdpte = &pdpt.entries[pdpt_ind];
@@ -103,7 +103,7 @@ impl PML4 {
             } else {
                 &(*virt_pd)
             };
-            pdpt.add(pdpt_ind, phys_pd, writable, false);
+            pdpt.add(pdpt_ind, phys_pd, writable, true);
             virt_pd
         };
         let pde = &pd.entries[pd_ind];
@@ -121,7 +121,7 @@ impl PML4 {
             } else {
                 &(*virt_pt)
             };
-            pd.add(pd_ind, phys_pt, writable, false);
+            pd.add(pd_ind, phys_pt, writable, true);
             virt_pt
         };
         let pte = &pt.entries[pt_ind];
@@ -133,9 +133,9 @@ impl PML4 {
         }
     }
 
-    pub unsafe fn unmap_frame_4k(&mut self, vaddr: &VirtPage4KiB, 
+    pub unsafe fn unmap_frame_4k(&mut self, vaddr: &VirtPage4KiB,
         heap_regions: Option<&Vec<(&PhysPage4KiB, usize)>>) -> &'static PhysPage4KiB {
-        
+
         let vaddr = vaddr as *const VirtPage4KiB as usize;
         if vaddr % 0x1000 != 0 {
             panic!("vaddr not aligned");
@@ -247,8 +247,8 @@ impl PML4 {
 }
 
 fn indicies_of_vaddr(vaddr: usize) -> (usize, usize, usize, usize) {
-    if  (vaddr & 0x_8000_0000_0000 == 0x_8000_0000_0000 && 
-        vaddr & 0xffff_8000_0000_0000 != 0xffff_8000_0000_0000) || 
+    if  (vaddr & 0x_8000_0000_0000 == 0x_8000_0000_0000 &&
+        vaddr & 0xffff_8000_0000_0000 != 0xffff_8000_0000_0000) ||
         (vaddr & 0x_8000_0000_0000 == 0 && vaddr & 0xffff_8000_0000_0000 != 0) {
         panic!("Vaddr not cannonical: {:#x} {:#x}", vaddr, vaddr & 0xffff_f000_0000_0000);
     }
@@ -337,7 +337,7 @@ impl PDPT {
         if ptr.is_err() {
             panic!("Alloc Error");
         }
-        
+
         &mut *(ptr.unwrap().as_mut_ptr() as *mut PDPT)
     }
 
@@ -425,7 +425,7 @@ impl PD {
         if ptr.is_err() {
             panic!("Alloc Error");
         }
-        
+
         &mut *(ptr.unwrap().as_mut_ptr() as *mut PD)
     }
 
@@ -554,7 +554,7 @@ impl PT {
                 panic!("Alloc Error");
             }
         }
-        
+
         &mut *(ptr.unwrap().as_mut_ptr() as *mut PT)
     }
 

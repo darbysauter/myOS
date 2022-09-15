@@ -4,26 +4,35 @@ use crate::memory::page_table::{ PML4, PhysPage4KiB };
 use crate::alloc::vec::Vec;
 use crate::interrupts::*;
 use crate::gdt::*;
+use crate::tss::*;
 use crate::memory::heap::{ print_heap, heap_sanity_check };
-use crate::apic::{ get_apic_base, set_apic_base, enable_apic, start_apic_timer, 
+use crate::memory::stack::{ create_new_user_stack_and_map };
+use crate::apic::{ get_apic_base, set_apic_base, enable_apic, start_apic_timer,
     set_apic_tpr, disable_pic };
+use crate::user_mode::{ enter_user_mode, enable_syscalls };
 
 // At this point we have elf loadable segments, heap and stack all mapped into high memory
 // The Page tables are on the heap.
 // The old elf loadable regions that were in low memory are unmapped
 // It is trivial now to map pages, allocate pages, and allocate memory on heap
 pub fn phase2_init(
-    _pml4: &mut PML4, 
-    frame_alloc: LinkedListFrameAllocator, 
-    _heap_phys_regions: Vec<(&PhysPage4KiB, usize)> ) -> ! {
+    pml4: &mut PML4,
+    mut frame_alloc: LinkedListFrameAllocator,
+    heap_phys_regions: Vec<(&'static PhysPage4KiB, usize)> ) -> ! {
 
     // memory diagnostics
     println!("frame alloc has {:#x} free pages", frame_alloc.frame_count);
     heap_sanity_check();
     print_heap();
-    
+
+    // create new tss
+    let tss = TSS::create_tss_on_heap();
+    let (tss_hi, tss_lo) = TSS::create_gdt_entry(&tss);
+
+    // TODO: Map TSS into user space
+
     // create new gdt and load it
-    let mut gdt = GDT::create_gdt_on_heap();
+    let mut gdt = GDT::create_gdt_on_heap(tss_hi, tss_lo);
     GDT::setup_gdt(&mut gdt);
 
     // create new idt and load it
@@ -34,16 +43,20 @@ pub fn phase2_init(
     //     asm!("int3");
     // }
 
-    let apic_base = get_apic_base();
-    set_apic_base(apic_base);
-    unsafe {
-        enable_apic(apic_base);
-        set_apic_tpr(apic_base, 0);
-    }
-    disable_pic();
-    enable_hardware_interrupts();
-    start_apic_timer(apic_base);
-    
+    enable_syscalls();
+    create_new_user_stack_and_map(&mut frame_alloc, pml4, &heap_phys_regions);
+    enter_user_mode();
+
+    // let apic_base = get_apic_base();
+    // set_apic_base(apic_base);
+    // unsafe {
+    //     enable_apic(apic_base);
+    //     set_apic_tpr(apic_base, 0);
+    // }
+    // disable_pic();
+    // enable_hardware_interrupts();
+    // start_apic_timer(apic_base);
+
     println!("We didn't die! :)");
     loop {}
 }

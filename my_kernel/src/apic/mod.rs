@@ -49,7 +49,7 @@ pub unsafe fn apic_end_of_interrupt(base: u64) {
 pub fn ident_map_apic_page(base: u64, pml4: &mut PML4) {
     assert_eq!(base & 0xffff_ffff_ffff_f000, base);
     unsafe {
-        pml4.map_frame_4k(base as usize, base as usize, true, false, None);
+        pml4.map_frame_4k(base as usize, base as usize, true, true, None);
     }
 }
 
@@ -66,7 +66,7 @@ pub fn start_apic_timer(base: u64) {
         apic_timer_set_divide(base, 0b1011);
         apic_timer_int_index(base, ExtraInterrupts::ApicTimer);
         apic_timer_set_count(base, 10000000);
-    
+
         apic_end_of_interrupt(base);
     }
 }

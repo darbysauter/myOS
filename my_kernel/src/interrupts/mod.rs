@@ -1,6 +1,5 @@
 pub mod interrupt_handlers;
 
-use crate::println;
 use core::mem;
 use core::fmt;
 use core::marker::PhantomData;
@@ -12,12 +11,12 @@ use crate::interrupts::interrupt_handlers::*;
 // trap - trap gate that saves the next IP
 // interrupt - interrupt gate that saves the next IP
 
-// It would be better if Intel engineers were not incompetent, 
-// and they should have called the IDT entries "exception gate" and 
-// "interrupt gate" or they should have classify exceptions as fault, 
-// continuable and abort (or something like that). It is very confusing that 
-// they call all exception descriptors "trap" gate, but also a kind of exception 
-// is named "trap" too, which happens to act just like the interrupt gate from the 
+// It would be better if Intel engineers were not incompetent,
+// and they should have called the IDT entries "exception gate" and
+// "interrupt gate" or they should have classify exceptions as fault,
+// continuable and abort (or something like that). It is very confusing that
+// they call all exception descriptors "trap" gate, but also a kind of exception
+// is named "trap" too, which happens to act just like the interrupt gate from the
 // continuation point of view... It is a complete naming mess.
 
 
@@ -37,10 +36,10 @@ pub fn enable_hardware_interrupts() {
 impl fmt::Debug for InterruptStackFrame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
-            "StackFrame[\n    RIP: {:#x}\n    CS: {:#x}\n    EFLAGS: {:#x}\n    RSP: {:#x}\n    SS: {:#x}\n]", 
+            "StackFrame[\n    RIP: {:#x}\n    CS: {:#x}\n    EFLAGS: {:#x}\n    RSP: {:#x}\n    SS: {:#x}\n]",
             self.rip,
-            self.cs, 
-            self.eflags, 
+            self.cs,
+            self.eflags,
             self.rsp,
             self.ss))
     }
@@ -69,7 +68,7 @@ impl IDTEntryOptions {
             data: 0b1110_0000_0000, // Type for 64bit Interrupt Gate
         }
     }
-    
+
     #[inline]
     pub fn set_present(&mut self, present: bool) -> &mut Self {
         if present {
@@ -273,6 +272,33 @@ impl IDT {
         &mut self.table.divide_error.options
     }
 
+
+    pub fn set_general_protection_handler(&mut self, handler: HandlerFuncWithErrCode) -> &mut IDTEntryOptions {
+        let addr = handler as usize;
+
+        self.table.general_protection.addr_low = addr as u16;
+        self.table.general_protection.addr_mid = (addr >> 16) as u16;
+        self.table.general_protection.addr_high = (addr >> 32) as u32;
+
+        self.table.general_protection.gdt_selector = 0x08;
+        self.table.general_protection.options.set_present(true);
+        self.table.general_protection.options.set_dpl(3);
+        &mut self.table.general_protection.options
+    }
+
+    pub fn set_page_fault_handler(&mut self, handler: PageFaultHandlerFunc) -> &mut IDTEntryOptions {
+        let addr = handler as usize;
+
+        self.table.page_fault.addr_low = addr as u16;
+        self.table.page_fault.addr_mid = (addr >> 16) as u16;
+        self.table.page_fault.addr_high = (addr >> 32) as u32;
+
+        self.table.page_fault.gdt_selector = 0x08;
+        self.table.page_fault.options.set_present(true);
+        self.table.page_fault.options.set_dpl(3);
+        &mut self.table.page_fault.options
+    }
+
     pub fn set_extra_handler(&mut self, handler: HandlerFunc, index: ExtraInterrupts) -> &mut IDTEntryOptions {
         let addr = handler as usize;
         let index = index as usize - 32;
@@ -293,6 +319,8 @@ impl IDT {
     pub fn setup_idt(idt: &mut Box<IDT>) {
         idt.set_breakpoint_handler(bp_handler);
         idt.set_divide_error_handler(de_handler);
+        idt.set_general_protection_handler(gp_handler);
+        idt.set_page_fault_handler(pf_handler);
         idt.set_extra_handler(apic_timer_handler, ExtraInterrupts::ApicTimer);
         idt.load();
     }

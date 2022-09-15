@@ -15,7 +15,7 @@ pub fn map_heap(heap_regions: &Vec<(&PhysPage4KiB, usize)>, pml4: &mut PML4) {
             let phys_page = start_page + (page * 0x1000);
             unsafe {
                 // println!("mapping phys: {:#x} to virt: {:#x}", phys_page, vpage);
-                pml4.map_frame_4k(phys_page, vpage, true, false, None);
+                pml4.map_frame_4k(phys_page, vpage, true, true, None);
             }
             vpage += 0x1000;
         }
@@ -50,17 +50,17 @@ pub fn map_elf_at_current_mapping(boot_info: &BootInfo, pml4: &mut PML4) {
             e.get(0x38..0x3a).expect("Couldn't get ent num [0]")
             .try_into().expect("Couldn't get ent num [1]"))
             .try_into().expect("Couldn't get ent num [2]");
-    
+
 
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
         unsafe { slice::from_raw_parts(ptr, ph_ent_num as usize) }
     };
-    
+
     for entry in prog_headers {
         if entry.seg_type == 0x1 {
             let start_page = entry.v_addr & 0xfffffffffffff000; // align to 0x1000
-            let end_page = 
+            let end_page =
                 (entry.v_addr + entry.mem_size as usize) & 0xfffffffffffff000; // align to 0x1000
             let pages = ((end_page - start_page) / 0x1000) + 1;
 
@@ -68,20 +68,20 @@ pub fn map_elf_at_current_mapping(boot_info: &BootInfo, pml4: &mut PML4) {
                 let phys_page = start_page + page * 0x1000;
                 let virt_page = phys_page;
                 unsafe {
-                    pml4.map_frame_4k(phys_page, virt_page, true, false, None);
+                    pml4.map_frame_4k(phys_page, virt_page, true, true, None);
                 }
             }
         }
     }
 }
 
-pub fn unmap_elf_at_original_mapping(prog_header_entries: &Vec<ProgHeaderEntry>, 
+pub fn unmap_elf_at_original_mapping(prog_header_entries: &Vec<ProgHeaderEntry>,
     pml4: &mut PML4, heap_regions: &Vec<(&PhysPage4KiB, usize)>) {
-    
+
     for entry in prog_header_entries {
         if entry.seg_type == 0x1 {
             let start_page = entry.v_addr & 0xfffffffffffff000; // align to 0x1000
-            let end_page = 
+            let end_page =
                 (entry.v_addr + entry.mem_size as usize) & 0xfffffffffffff000; // align to 0x1000
             let pages = ((end_page - start_page) / 0x1000) + 1;
 
@@ -124,17 +124,17 @@ pub fn map_elf_at_new_base(boot_info: &BootInfo, pml4: &mut PML4) {
             e.get(0x38..0x3a).expect("Couldn't get ent num [0]")
             .try_into().expect("Couldn't get ent num [1]"))
             .try_into().expect("Couldn't get ent num [2]");
-    
+
 
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
         unsafe { slice::from_raw_parts(ptr, ph_ent_num as usize) }
     };
-    
+
     for entry in prog_headers {
         if entry.seg_type == 0x1 {
             let start_page = entry.v_addr & 0xfffffffffffff000; // align to 0x1000
-            let end_page = 
+            let end_page =
                 (entry.v_addr + entry.mem_size as usize) & 0xfffffffffffff000; // align to 0x1000
             let pages = ((end_page - start_page) / 0x1000) + 1;
 
@@ -143,7 +143,7 @@ pub fn map_elf_at_new_base(boot_info: &BootInfo, pml4: &mut PML4) {
                 let seg_offset = start_page - ELF_OLD_BASE;
                 let virt_page = ELF_NEW_BASE + seg_offset + page * 0x1000;
                 unsafe {
-                    pml4.map_frame_4k(phys_page, virt_page, true, false, None);
+                    pml4.map_frame_4k(phys_page, virt_page, true, true, None);
                 }
             }
         }
@@ -155,6 +155,6 @@ pub fn ident_map_vga_buf(pml4: &mut PML4) {
     unsafe {
         let phys_page = 0xb8000;
         let virt_page = phys_page;
-        pml4.map_frame_4k(phys_page, virt_page, true, false, None);
+        pml4.map_frame_4k(phys_page, virt_page, true, true, None);
     }
 }

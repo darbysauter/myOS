@@ -15,7 +15,7 @@ pub fn check_msr() -> bool {
 pub unsafe fn write_msr(msr: u32, value: u64) {
     let low = value as u32;
     let high = (value >> 32) as u32;
-    asm!("mov ecx, {:e}; wrmsr; mov {:e}, eax; mov {:e}, edx", in(reg) msr, in(reg) low, in(reg) high);
+    asm!("wrmsr", in("ecx") msr, in("eax") low, in("edx") high);
 }
 
 pub unsafe fn read_msr(msr: u32) -> u64 {

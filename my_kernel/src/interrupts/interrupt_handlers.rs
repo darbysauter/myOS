@@ -12,6 +12,16 @@ pub extern "x86-interrupt" fn de_handler(sf: InterruptStackFrame) {
     loop{}
 }
 
+pub extern "x86-interrupt" fn gp_handler(sf: InterruptStackFrame, error: u64) {
+    println!("EXCEPTION: GP\n{:#?} error: {}", sf, error);
+    loop{}
+}
+
+pub extern "x86-interrupt" fn pf_handler(sf: InterruptStackFrame, error: u64) {
+    println!("EXCEPTION: PF\n{:#?} error: {}", sf, error);
+    loop{}
+}
+
 pub extern "x86-interrupt" fn apic_timer_handler(_sf: InterruptStackFrame) {
     print!(".");
     unsafe {

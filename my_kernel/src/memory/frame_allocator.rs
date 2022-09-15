@@ -24,7 +24,7 @@ impl LinkedListFrameAllocator {
         }
     }
 
-    // this only works when identity mapped because the next points to some 
+    // this only works when identity mapped because the next points to some
     // physical addr
     pub fn allocate(&mut self) -> Option<&'static PhysPage4KiB> {
         if self.frame_count != 0 {
@@ -62,17 +62,17 @@ impl LinkedListFrameAllocator {
 
     // This needs to be used when memory is not identity mapped and fully mapped
     // This will need to map in the frame in order to get the 'next' pointer
-    pub fn allocate_and_map(&mut self, pml4: &mut PML4, vaddr: &VirtPage4KiB, 
+    pub fn allocate_and_map(&mut self, pml4: &mut PML4, vaddr: usize,
         heap_regions: &Vec<(&'static PhysPage4KiB, usize)>) -> Option<&'static VirtPage4KiB> {
         if self.frame_count != 0 {
             self.frame_count -= 1;
             unsafe {
                 // phys addr
                 let phys_page = self.next;
-                let virt_page = vaddr as *const VirtPage4KiB as usize;
+                let virt_page = vaddr;
                 // must map phys addr to some virt addr
                 // then get the new next pointer from virt addr
-                pml4.map_frame_4k(phys_page, virt_page, true, false, Some(heap_regions));
+                pml4.map_frame_4k(phys_page, virt_page, true, true, Some(heap_regions));
 
                 let next = *(virt_page as *mut usize);
 
@@ -134,7 +134,7 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
         let ptr = boot_info.elf_location as *const u8;
         unsafe { slice::from_raw_parts(ptr, boot_info.elf_size as usize) }
     };
-    
+
     if e.get(0..4) != Some(b"\x7fELF") {
         panic!("Invalid ELF header");
     }
@@ -158,7 +158,7 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
             e.get(0x38..0x3a).expect("Couldn't get ent num [0]")
             .try_into().expect("Couldn't get ent num [1]"))
             .try_into().expect("Couldn't get ent num [2]");
-    
+
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
         unsafe { slice::from_raw_parts(ptr, ph_ent_num as usize) }
@@ -174,7 +174,7 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
                 panic!("Too many segments");
             }
             let start_page = entry.v_addr & 0xfffffffffffff000; // align to 0x1000
-            let end_page = 
+            let end_page =
                 (entry.v_addr + entry.mem_size as usize) & 0xfffffffffffff000; // align to 0x1000
             seg_avoid[ind] = (start_page, end_page);
             ind += 1;

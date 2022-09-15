@@ -1,6 +1,7 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
 #![feature(asm)]
+#![feature(global_asm)]
 #![feature(alloc_error_handler)]
 #![feature(const_mut_refs)]
 #![feature(allocator_api)]
@@ -19,6 +20,8 @@ pub mod init;
 pub mod bootloader_structs;
 pub mod interrupts;
 pub mod gdt;
+pub mod tss;
+pub mod user_mode;
 pub mod apic;
 pub mod cpu;
 
