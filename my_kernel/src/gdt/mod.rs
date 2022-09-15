@@ -60,7 +60,8 @@ impl GDT {
                 "mov es, ax",
                 "mov fs, ax",
                 "mov gs, ax",
-                "mov ss, ax"); // TODO: reload CS register
+                "mov ss, ax"
+            ); // TODO: reload CS register
         }
     }
 
@@ -68,7 +69,8 @@ impl GDT {
         unsafe {
             asm!(
                 "mov ax, (5 * 8)", // selectoor 5 for tss
-                "ltr ax");
+                "ltr ax"
+            );
         }
     }
 

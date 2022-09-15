@@ -1,11 +1,11 @@
+use super::Locked;
+use crate::alloc::vec::Vec;
+use crate::memory::heap::linked_list_alloc::LinkedListAllocator;
+use crate::memory::page_table::PhysPage4KiB;
+use crate::println;
+use alloc::alloc::GlobalAlloc;
 use alloc::alloc::Layout;
 use core::mem;
-use alloc::alloc::GlobalAlloc;
-use crate::memory::heap::linked_list_alloc::LinkedListAllocator;
-use super::Locked;
-use crate::println;
-use crate::alloc::vec::Vec;
-use crate::memory::page_table::PhysPage4KiB;
 
 #[derive(Debug)]
 struct ListNode {
@@ -22,7 +22,6 @@ pub struct BlockAllocator {
 }
 
 impl BlockAllocator {
-
     pub const fn new() -> Self {
         const EMPTY: Option<&'static mut ListNode> = None;
         BlockAllocator {
@@ -31,13 +30,21 @@ impl BlockAllocator {
             total_memory: 0,
         }
     }
-    
+
     pub fn print_heap_stats(&mut self) {
         let total_used_bytes = self.fallback_allocator.used_memory;
-        println!("Heap Total Used(tracked): {:#x} Bytes | {:#} KiB", total_used_bytes, total_used_bytes/1024);
-        println!("Heap Total Size(tracked): {:#x} Bytes | {:#} KiB", self.total_memory, self.total_memory/1024);
+        println!(
+            "Heap Total Used(tracked): {:#x} Bytes | {:#} KiB",
+            total_used_bytes,
+            total_used_bytes / 1024
+        );
+        println!(
+            "Heap Total Size(tracked): {:#x} Bytes | {:#} KiB",
+            self.total_memory,
+            self.total_memory / 1024
+        );
     }
-    
+
     pub fn heap_sanity_check(&mut self, free_bytes: u64) {
         let total_used_bytes = self.fallback_allocator.used_memory;
         let total_free_bytes = self.total_memory - total_used_bytes;
@@ -48,8 +55,10 @@ impl BlockAllocator {
             } else {
                 dif = free_bytes - total_free_bytes;
             }
-            println!("tracked free bytes: {:#x} free according to allocators: {:#x} dif: {:#x}", 
-                total_free_bytes, free_bytes, dif);
+            println!(
+                "tracked free bytes: {:#x} free according to allocators: {:#x} dif: {:#x}",
+                total_free_bytes, free_bytes, dif
+            );
             panic!("Heap disagreed");
         } else {
             println!("Heap Sanity Check Passed");
@@ -93,11 +102,11 @@ impl BlockAllocator {
         }
         total_bytes as u64
     }
-    
+
     pub fn print_ll_regions(&mut self) -> u64 {
         self.fallback_allocator.print_regions()
     }
-    
+
     pub fn get_ll_regions(&mut self) -> u64 {
         self.fallback_allocator.get_regions()
     }
@@ -106,7 +115,7 @@ impl BlockAllocator {
         self.fallback_allocator.init(heap_start, heap_size);
         self.total_memory += heap_size as u64;
     }
-    
+
     pub unsafe fn extend(&mut self, heap_start: usize, heap_size: usize) {
         self.fallback_allocator.init(heap_start, heap_size);
         self.total_memory += heap_size as u64;
@@ -117,7 +126,7 @@ impl BlockAllocator {
     }
 
     // TODO: still need to do relocation here
-    pub fn fix_heap_after_remap(&mut self, heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
+    pub fn fix_heap_after_remap(&mut self, heap_regions: &Vec<(&PhysPage4KiB, usize)>) {
         for i in 0..self.list_heads.len() {
             if let Some(node) = self.list_heads[i].take() {
                 let mut rev_list: Option<&'static mut ListNode> = None;
@@ -137,7 +146,6 @@ impl BlockAllocator {
         self.fallback_allocator.fix_heap_after_remap(heap_regions);
     }
 }
-
 
 fn list_index(layout: &Layout) -> Option<usize> {
     let required_block_size = layout.size().max(layout.align());
@@ -162,8 +170,7 @@ unsafe impl GlobalAlloc for Locked<BlockAllocator> {
                         let block_size = BLOCK_SIZES[index];
                         // only works if all block sizes are a power of 2
                         let block_align = block_size;
-                        let layout = Layout::from_size_align(block_size, block_align)
-                            .unwrap();
+                        let layout = Layout::from_size_align(block_size, block_align).unwrap();
                         allocator.fallback_alloc(layout)
                     }
                 }
@@ -194,4 +201,3 @@ unsafe impl GlobalAlloc for Locked<BlockAllocator> {
         }
     }
 }
-

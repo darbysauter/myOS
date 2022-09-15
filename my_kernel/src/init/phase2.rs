@@ -1,15 +1,16 @@
-use crate::println;
-use crate::memory::frame_allocator::LinkedListFrameAllocator;
-use crate::memory::page_table::{ PML4, PhysPage4KiB };
 use crate::alloc::vec::Vec;
-use crate::interrupts::*;
+use crate::apic::{
+    disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
+};
 use crate::gdt::*;
+use crate::interrupts::*;
+use crate::memory::frame_allocator::LinkedListFrameAllocator;
+use crate::memory::heap::{heap_sanity_check, print_heap};
+use crate::memory::page_table::{PhysPage4KiB, PML4};
+use crate::memory::stack::create_new_user_stack_and_map;
+use crate::println;
 use crate::tss::*;
-use crate::memory::heap::{ print_heap, heap_sanity_check };
-use crate::memory::stack::{ create_new_user_stack_and_map };
-use crate::apic::{ get_apic_base, set_apic_base, enable_apic, start_apic_timer,
-    set_apic_tpr, disable_pic };
-use crate::user_mode::{ enter_user_mode, enable_syscalls };
+use crate::user_mode::{enable_syscalls, enter_user_mode};
 
 // At this point we have elf loadable segments, heap and stack all mapped into high memory
 // The Page tables are on the heap.
@@ -18,8 +19,8 @@ use crate::user_mode::{ enter_user_mode, enable_syscalls };
 pub fn phase2_init(
     pml4: &mut PML4,
     mut frame_alloc: LinkedListFrameAllocator,
-    heap_phys_regions: Vec<(&'static PhysPage4KiB, usize)> ) -> ! {
-
+    heap_phys_regions: Vec<(&'static PhysPage4KiB, usize)>,
+) -> ! {
     // memory diagnostics
     println!("frame alloc has {:#x} free pages", frame_alloc.frame_count);
     heap_sanity_check();

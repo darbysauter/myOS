@@ -1,10 +1,10 @@
 pub mod interrupt_handlers;
 
-use core::mem;
+use crate::interrupts::interrupt_handlers::*;
+use alloc::boxed::Box;
 use core::fmt;
 use core::marker::PhantomData;
-use alloc::boxed::Box;
-use crate::interrupts::interrupt_handlers::*;
+use core::mem;
 
 // abort - trap gate that saves unrelated IP (basically NMI and such)
 // fault - trap gate that saves the current IP
@@ -19,7 +19,6 @@ use crate::interrupts::interrupt_handlers::*;
 // is named "trap" too, which happens to act just like the interrupt gate from the
 // continuation point of view... It is a complete naming mess.
 
-
 // #[derive(Debug)]
 // #[repr(C)]
 // pub struct InterruptStackFramePtr {
@@ -31,7 +30,6 @@ pub fn enable_hardware_interrupts() {
         asm!("sti");
     }
 }
-
 
 impl fmt::Debug for InterruptStackFrame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -58,13 +56,13 @@ pub struct InterruptStackFrame {
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct IDTEntryOptions {
-    data: u16
+    data: u16,
 }
 
 impl IDTEntryOptions {
     #[inline]
     const fn default() -> Self {
-        IDTEntryOptions{
+        IDTEntryOptions {
             data: 0b1110_0000_0000, // Type for 64bit Interrupt Gate
         }
     }
@@ -99,9 +97,7 @@ impl IDTEntryOptions {
             panic!("Invalid priv level");
         }
         let range = 13..15;
-        let bitmask = !(!0 << (16 - range.end) >>
-                                    (16 - range.end) >>
-                                    range.start << range.start);
+        let bitmask = !(!0 << (16 - range.end) >> (16 - range.end) >> range.start << range.start);
 
         self.data = (self.data & bitmask) | ((level as u16) << range.start);
         self
@@ -110,9 +106,7 @@ impl IDTEntryOptions {
     #[inline]
     pub unsafe fn set_stack_index(&mut self, index: u16) -> &mut Self {
         let range = 0..3;
-        let bitmask = !(!0 << (16 - range.end) >>
-                                    (16 - range.end) >>
-                                    range.start << range.start);
+        let bitmask = !(!0 << (16 - range.end) >> (16 - range.end) >> range.start << range.start);
 
         self.data = (self.data & bitmask) | (index << range.start);
         self
@@ -169,9 +163,9 @@ struct InterruptDescriptorTable {
     alignment_check: IDTEntry<HandlerFuncWithErrCode>,
     machine_check: IDTEntry<DivergingHandlerFunc>,
     simd_fpu: IDTEntry<HandlerFunc>,
-    virtualization: IDTEntry<HandlerFunc>, // 21
+    virtualization: IDTEntry<HandlerFunc>,     // 21
     reserved_arr: [IDTEntry<HandlerFunc>; 11], // 32 or index 31
-    extra: [IDTEntry<HandlerFunc>; 256-32],
+    extra: [IDTEntry<HandlerFunc>; 256 - 32],
 }
 
 // #[repr(align(8))]
@@ -192,7 +186,8 @@ pub type HandlerFunc = extern "x86-interrupt" fn(InterruptStackFrame);
 pub type DivergingHandlerFunc = extern "x86-interrupt" fn(InterruptStackFrame) -> !;
 pub type PageFaultHandlerFunc = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64);
 pub type HandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64);
-pub type DivergingHandlerFuncWithErrCode = extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64) -> !;
+pub type DivergingHandlerFuncWithErrCode =
+    extern "x86-interrupt" fn(_: InterruptStackFrame, error: u64) -> !;
 
 #[repr(usize)]
 pub enum ExtraInterrupts {
@@ -202,10 +197,7 @@ pub enum ExtraInterrupts {
 impl IDT {
     fn new() -> Self {
         IDT {
-            ptr: InterruptDescriptorTablePtr {
-                limit: 0,
-                addr: 0,
-            },
+            ptr: InterruptDescriptorTablePtr { limit: 0, addr: 0 },
             table: InterruptDescriptorTable {
                 divide_error: IDTEntry::empty(),
                 debug_excepton: IDTEntry::empty(),
@@ -229,7 +221,7 @@ impl IDT {
                 simd_fpu: IDTEntry::empty(),
                 virtualization: IDTEntry::empty(),
                 reserved_arr: [IDTEntry::empty(); 11],
-                extra: [IDTEntry::empty(); 256-32],
+                extra: [IDTEntry::empty(); 256 - 32],
             },
         }
     }
@@ -272,8 +264,10 @@ impl IDT {
         &mut self.table.divide_error.options
     }
 
-
-    pub fn set_general_protection_handler(&mut self, handler: HandlerFuncWithErrCode) -> &mut IDTEntryOptions {
+    pub fn set_general_protection_handler(
+        &mut self,
+        handler: HandlerFuncWithErrCode,
+    ) -> &mut IDTEntryOptions {
         let addr = handler as usize;
 
         self.table.general_protection.addr_low = addr as u16;
@@ -286,7 +280,10 @@ impl IDT {
         &mut self.table.general_protection.options
     }
 
-    pub fn set_page_fault_handler(&mut self, handler: PageFaultHandlerFunc) -> &mut IDTEntryOptions {
+    pub fn set_page_fault_handler(
+        &mut self,
+        handler: PageFaultHandlerFunc,
+    ) -> &mut IDTEntryOptions {
         let addr = handler as usize;
 
         self.table.page_fault.addr_low = addr as u16;
@@ -299,7 +296,11 @@ impl IDT {
         &mut self.table.page_fault.options
     }
 
-    pub fn set_extra_handler(&mut self, handler: HandlerFunc, index: ExtraInterrupts) -> &mut IDTEntryOptions {
+    pub fn set_extra_handler(
+        &mut self,
+        handler: HandlerFunc,
+        index: ExtraInterrupts,
+    ) -> &mut IDTEntryOptions {
         let addr = handler as usize;
         let index = index as usize - 32;
 

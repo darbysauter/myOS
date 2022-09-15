@@ -1,9 +1,9 @@
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
-use crate::memory::page_table::PhysPage4KiB;
 use crate::memory::heap::block_alloc::BlockAllocator;
-use alloc::vec::Vec;
+use crate::memory::page_table::PhysPage4KiB;
 use crate::println;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 pub mod block_alloc;
 pub mod linked_list_alloc;
@@ -15,7 +15,9 @@ pub const HEAP_SIZE: usize = 8192 * 1024; // 8192 KiB, this should always be a m
 static ALLOCATOR: Locked<BlockAllocator> = Locked::new(BlockAllocator::new());
 
 // Called while identity mapped
-pub fn init_heap_phase1(frame_alloc: &mut LinkedListFrameAllocator) -> (&'static PhysPage4KiB, usize) {
+pub fn init_heap_phase1(
+    frame_alloc: &mut LinkedListFrameAllocator,
+) -> (&'static PhysPage4KiB, usize) {
     if HEAP_START % 0x1000 != 0 || HEAP_SIZE % 0x1000 != 0 {
         panic!("HEAP not 4KiB aligned");
     }
@@ -23,15 +25,18 @@ pub fn init_heap_phase1(frame_alloc: &mut LinkedListFrameAllocator) -> (&'static
     let mut last_page: usize = 0x0;
     let mut first_page: usize = 0x0;
     let mut pages: usize = 0;
-    for _page in (HEAP_START .. HEAP_START+HEAP_SIZE).step_by(0x1000) {
+    for _page in (HEAP_START..HEAP_START + HEAP_SIZE).step_by(0x1000) {
         if let Some(new_page) = frame_alloc.allocate() {
             let new_page = new_page as *const PhysPage4KiB as usize;
             if last_page != 0 && last_page + 0x1000 != new_page {
                 unsafe {
                     frame_alloc.deallocate(&*(new_page as *const PhysPage4KiB));
-                    ALLOCATOR.lock().init(first_page, pages*0x1000);
-                    println!("Partially initialized heap with size {} KiB", (pages*0x1000)/1024);
-                    return (&*(first_page as *const PhysPage4KiB), pages)
+                    ALLOCATOR.lock().init(first_page, pages * 0x1000);
+                    println!(
+                        "Partially initialized heap with size {} KiB",
+                        (pages * 0x1000) / 1024
+                    );
+                    return (&*(first_page as *const PhysPage4KiB), pages);
                 }
             }
             pages += 1;
@@ -45,12 +50,18 @@ pub fn init_heap_phase1(frame_alloc: &mut LinkedListFrameAllocator) -> (&'static
     }
     unsafe {
         ALLOCATOR.lock().init(first_page, HEAP_SIZE);
-        println!("Fully initialized heap with size {} KiB", (pages*0x1000)/1024);
-        return (&*(first_page as *const PhysPage4KiB), pages)
+        println!(
+            "Fully initialized heap with size {} KiB",
+            (pages * 0x1000) / 1024
+        );
+        return (&*(first_page as *const PhysPage4KiB), pages);
     }
 }
 
-pub fn init_heap_phase2(frame_alloc: &mut LinkedListFrameAllocator, pages_used: usize) -> Vec<(&'static PhysPage4KiB, usize)> {
+pub fn init_heap_phase2(
+    frame_alloc: &mut LinkedListFrameAllocator,
+    pages_used: usize,
+) -> Vec<(&'static PhysPage4KiB, usize)> {
     let increase_size = HEAP_SIZE - (pages_used * 0x1000);
     let new_start = HEAP_START + (pages_used * 0x1000);
     let mut phys_regions = Vec::new();
@@ -64,14 +75,14 @@ pub fn init_heap_phase2(frame_alloc: &mut LinkedListFrameAllocator, pages_used: 
     let mut last_page: usize = 0x0;
     let mut first_page: usize = 0x0;
     let mut pages: usize = 0;
-    for _page in (new_start .. HEAP_START+HEAP_SIZE).step_by(0x1000) {
+    for _page in (new_start..HEAP_START + HEAP_SIZE).step_by(0x1000) {
         if let Some(new_page) = frame_alloc.allocate() {
             let new_page = new_page as *const PhysPage4KiB as usize;
             if last_page != 0 && last_page + 0x1000 != new_page {
                 unsafe {
                     ALLOCATOR.lock().extend(first_page, increase_size);
                     phys_regions.push((&*(first_page as *const PhysPage4KiB), pages));
-                    println!("Extended heap with size {} KiB", (pages*0x1000)/1024);
+                    println!("Extended heap with size {} KiB", (pages * 0x1000) / 1024);
                 }
                 first_page = new_page;
                 pages = 0;
@@ -88,13 +99,16 @@ pub fn init_heap_phase2(frame_alloc: &mut LinkedListFrameAllocator, pages_used: 
     unsafe {
         ALLOCATOR.lock().extend(first_page, increase_size);
         phys_regions.push((&*(first_page as *const PhysPage4KiB), pages));
-        println!("Extended heap with size {} KiB", (pages*0x1000)/1024);
+        println!("Extended heap with size {} KiB", (pages * 0x1000) / 1024);
         return phys_regions;
     }
 }
 
 // virt to phys
-pub unsafe fn translate_ref_to_phys<'a, T>(heap_regions: &Vec<(& PhysPage4KiB, usize)>, object: &'a mut T) -> &'a mut T {
+pub unsafe fn translate_ref_to_phys<'a, T>(
+    heap_regions: &Vec<(&PhysPage4KiB, usize)>,
+    object: &'a mut T,
+) -> &'a mut T {
     let o = object as *const T as usize;
     // println!("orig addr: {:#x}", o);
     let mut offset: usize = (o - HEAP_START) & 0xffff_ffff_ffff_f000;
@@ -109,14 +123,17 @@ pub unsafe fn translate_ref_to_phys<'a, T>(heap_regions: &Vec<(& PhysPage4KiB, u
         let phys_page = start_page + offset;
         let phys_addr = phys_page + (o & 0xfff);
         // println!("new addr: {:#x}", phys_addr);
-        let phys_ref = &mut(*(phys_addr as *mut T));
+        let phys_ref = &mut (*(phys_addr as *mut T));
         return phys_ref;
     }
     panic!("Did not find region");
 }
 
 // phys to virt
-pub unsafe fn translate_ref_to_virt<'a, T>(heap_regions: &Vec<(&PhysPage4KiB, usize)>, object: &'a mut T) -> &'a mut T {
+pub unsafe fn translate_ref_to_virt<'a, T>(
+    heap_regions: &Vec<(&PhysPage4KiB, usize)>,
+    object: &'a mut T,
+) -> &'a mut T {
     let mut o = object as *const T as usize;
     // println!("orig addr: {:#x}", o);
     let mut offset: usize = 0;
@@ -134,12 +151,14 @@ pub unsafe fn translate_ref_to_virt<'a, T>(heap_regions: &Vec<(&PhysPage4KiB, us
     o = HEAP_START + offset + (o & 0xfff);
 
     // println!("new addr: {:#x}", o);
-    let virt_ref = &mut(*(o as *mut T));
+    let virt_ref = &mut (*(o as *mut T));
     virt_ref
 }
 
-
-pub unsafe fn translate_usize_to_virt(heap_regions: &Vec<(&PhysPage4KiB, usize)>, object: usize) -> usize {
+pub unsafe fn translate_usize_to_virt(
+    heap_regions: &Vec<(&PhysPage4KiB, usize)>,
+    object: usize,
+) -> usize {
     let mut o = object;
     // println!("orig addr: {:#x}", o);
     let mut offset: usize = 0;
@@ -161,7 +180,10 @@ pub unsafe fn translate_usize_to_virt(heap_regions: &Vec<(&PhysPage4KiB, usize)>
 }
 
 // phys to virt
-pub unsafe fn translate_box<T>(heap_regions: &Vec<(&'static PhysPage4KiB, usize)>, object: Box<T>) -> *mut T {
+pub unsafe fn translate_box<T>(
+    heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
+    object: Box<T>,
+) -> *mut T {
     let mut o = Box::<T>::into_raw(object) as *mut Box<T> as *mut T as usize;
     // println!("orig addr: {:#x}", o);
     let mut offset: usize = 0;
@@ -183,7 +205,10 @@ pub unsafe fn translate_box<T>(heap_regions: &Vec<(&'static PhysPage4KiB, usize)
 }
 
 // phys to virt
-pub unsafe fn translate_box_vec<T>(heap_regions: &Vec<(&'static PhysPage4KiB, usize)>, vec: Vec<T>) -> *mut Vec<T> {
+pub unsafe fn translate_box_vec<T>(
+    heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
+    vec: Vec<T>,
+) -> *mut Vec<T> {
     let (arr_ptr, len, cap) = vec.into_raw_parts();
     let mut arr_ptr = arr_ptr as usize;
 
@@ -226,7 +251,7 @@ pub unsafe fn translate_box_vec<T>(heap_regions: &Vec<(&'static PhysPage4KiB, us
     o as *mut Vec<T>
 }
 
-pub fn fix_heap_after_remap(heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
+pub fn fix_heap_after_remap(heap_regions: &Vec<(&PhysPage4KiB, usize)>) {
     ALLOCATOR.lock().fix_heap_after_remap(heap_regions);
 }
 
@@ -234,7 +259,11 @@ pub fn print_heap() {
     let ll_alloc_size = ALLOCATOR.lock().print_ll_regions();
     let block_alloc_size = ALLOCATOR.lock().print_block_regions();
     let total_bytes = ll_alloc_size + block_alloc_size;
-    println!("Heap Total Free: {:#x} Bytes | {:#} KiB", total_bytes, total_bytes/1024);
+    println!(
+        "Heap Total Free: {:#x} Bytes | {:#} KiB",
+        total_bytes,
+        total_bytes / 1024
+    );
     ALLOCATOR.lock().print_heap_stats();
 }
 
@@ -249,7 +278,7 @@ pub struct Locked<A> {
     inner: spin::Mutex<A>,
 }
 
-impl <A> Locked<A> {
+impl<A> Locked<A> {
     pub const fn new(inner: A) -> Self {
         Locked {
             inner: spin::Mutex::new(inner),

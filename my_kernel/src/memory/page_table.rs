@@ -1,10 +1,10 @@
-use alloc::alloc::{ Global, Layout };
+use alloc::alloc::{Global, Layout};
 use core::alloc::Allocator;
 
-use core::ptr::NonNull;
-use core::mem;
+use crate::memory::heap::{translate_ref_to_phys, translate_ref_to_virt, HEAP_START};
 use alloc::vec::Vec;
-use crate::memory::heap::{ HEAP_START, translate_ref_to_phys, translate_ref_to_virt };
+use core::mem;
+use core::ptr::NonNull;
 
 // Assumes IA-32e Paging and CR4.PCIDE = 0
 // No support for 1GiB Pages
@@ -12,16 +12,18 @@ use crate::memory::heap::{ HEAP_START, translate_ref_to_phys, translate_ref_to_v
 const PAGE_TABLE_SIZE: usize = 512;
 const RECUR_INDEX: usize = 0x1ff;
 
-
 #[derive(Debug)]
 #[repr(align(4096))]
 #[repr(C)]
-pub struct PML4 { // Page Map Level 4 no support for flags now
+pub struct PML4 {
+    // Page Map Level 4 no support for flags now
     pub entries: [PML4E; PAGE_TABLE_SIZE],
 }
 
 impl PML4 {
-    pub unsafe fn new(heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>) -> &'static mut Self {
+    pub unsafe fn new(
+        heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>,
+    ) -> &'static mut Self {
         let ptr = Global.allocate_zeroed(Layout::new::<PML4>());
 
         if ptr.is_err() {
@@ -38,8 +40,7 @@ impl PML4 {
         pml4
     }
 
-    pub unsafe fn add(&mut self, index: usize, pdpt: &PDPT,
-        writable: bool, user_accessable: bool) {
+    pub unsafe fn add(&mut self, index: usize, pdpt: &PDPT, writable: bool, user_accessable: bool) {
         let phys_ptr = pdpt as *const PDPT as usize;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
             panic!("PDPT not aligned");
@@ -59,10 +60,14 @@ impl PML4 {
         self.entries[index].data = data as u64;
     }
 
-    pub unsafe fn map_frame_4k(&mut self, paddr: usize,
-        vaddr: usize, writable: bool, user_accessable: bool,
-        heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>) {
-
+    pub unsafe fn map_frame_4k(
+        &mut self,
+        paddr: usize,
+        vaddr: usize,
+        writable: bool,
+        user_accessable: bool,
+        heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>,
+    ) {
         if paddr % 0x1000 != 0 {
             panic!("paddr not aligned");
         }
@@ -133,9 +138,11 @@ impl PML4 {
         }
     }
 
-    pub unsafe fn unmap_frame_4k(&mut self, vaddr: &VirtPage4KiB,
-        heap_regions: Option<&Vec<(&PhysPage4KiB, usize)>>) -> &'static PhysPage4KiB {
-
+    pub unsafe fn unmap_frame_4k(
+        &mut self,
+        vaddr: &VirtPage4KiB,
+        heap_regions: Option<&Vec<(&PhysPage4KiB, usize)>>,
+    ) -> &'static PhysPage4KiB {
         let vaddr = vaddr as *const VirtPage4KiB as usize;
         if vaddr % 0x1000 != 0 {
             panic!("vaddr not aligned");
@@ -223,7 +230,11 @@ impl PML4 {
         &(*(frame as *const PhysPage4KiB))
     }
 
-    pub fn get_pdpt_recursive(&self, index: usize, heap_phys_regions: &Vec<(&PhysPage4KiB, usize)>) -> &'static mut PDPT {
+    pub fn get_pdpt_recursive(
+        &self,
+        index: usize,
+        heap_phys_regions: &Vec<(&PhysPage4KiB, usize)>,
+    ) -> &'static mut PDPT {
         let phys_addr_ptr = indicies_to_vaddr(0x1ff, 0x1ff, 0x1ff, 0x1ff, index);
         // this ^ address will recursively point to the phys addr of the PDPT
         unsafe {
@@ -247,10 +258,15 @@ impl PML4 {
 }
 
 fn indicies_of_vaddr(vaddr: usize) -> (usize, usize, usize, usize) {
-    if  (vaddr & 0x_8000_0000_0000 == 0x_8000_0000_0000 &&
-        vaddr & 0xffff_8000_0000_0000 != 0xffff_8000_0000_0000) ||
-        (vaddr & 0x_8000_0000_0000 == 0 && vaddr & 0xffff_8000_0000_0000 != 0) {
-        panic!("Vaddr not cannonical: {:#x} {:#x}", vaddr, vaddr & 0xffff_f000_0000_0000);
+    if (vaddr & 0x_8000_0000_0000 == 0x_8000_0000_0000
+        && vaddr & 0xffff_8000_0000_0000 != 0xffff_8000_0000_0000)
+        || (vaddr & 0x_8000_0000_0000 == 0 && vaddr & 0xffff_8000_0000_0000 != 0)
+    {
+        panic!(
+            "Vaddr not cannonical: {:#x} {:#x}",
+            vaddr,
+            vaddr & 0xffff_f000_0000_0000
+        );
     }
     let pml4_ind: usize = (vaddr >> 39) & 0x1ff;
     let pdpt_ind: usize = (vaddr >> 30) & 0x1ff;
@@ -259,8 +275,13 @@ fn indicies_of_vaddr(vaddr: usize) -> (usize, usize, usize, usize) {
     (pml4_ind, pdpt_ind, pd_ind, pt_ind)
 }
 
-
-fn indicies_to_vaddr(pml4_ind: usize, pdpt_ind: usize, pd_ind: usize, pt_ind: usize, p_ind: usize) -> usize {
+fn indicies_to_vaddr(
+    pml4_ind: usize,
+    pdpt_ind: usize,
+    pd_ind: usize,
+    pt_ind: usize,
+    p_ind: usize,
+) -> usize {
     if pml4_ind > 0x1ff || pdpt_ind > 0x1ff || pd_ind > 0x1ff || pt_ind > 0x1ff || p_ind > 0x1ff {
         panic!("Invalid offset");
     }
@@ -278,7 +299,8 @@ fn indicies_to_vaddr(pml4_ind: usize, pdpt_ind: usize, pd_ind: usize, pt_ind: us
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct PML4E { // Page Map Level 4 Entry
+pub struct PML4E {
+    // Page Map Level 4 Entry
     data: u64,
 }
 
@@ -314,9 +336,7 @@ impl PML4E {
     #[inline(always)]
     pub fn pdpt(&self) -> Option<&'static mut PDPT> {
         if self.present() {
-            unsafe {
-                Some(&mut *(((self.data as usize) & 0xffffffffff000) as *mut PDPT))
-            }
+            unsafe { Some(&mut *(((self.data as usize) & 0xffffffffff000) as *mut PDPT)) }
         } else {
             None
         }
@@ -326,7 +346,8 @@ impl PML4E {
 #[derive(Debug)]
 #[repr(align(4096))]
 #[repr(C)]
-pub struct PDPT { // Page Directory Pointer Table
+pub struct PDPT {
+    // Page Directory Pointer Table
     pub entries: [PDPTE; PAGE_TABLE_SIZE],
 }
 
@@ -341,8 +362,7 @@ impl PDPT {
         &mut *(ptr.unwrap().as_mut_ptr() as *mut PDPT)
     }
 
-    pub unsafe fn add(&mut self, index: usize, pd: &PD,
-        writable: bool, user_accessable: bool) {
+    pub unsafe fn add(&mut self, index: usize, pd: &PD, writable: bool, user_accessable: bool) {
         let phys_ptr = pd as *const PD as usize;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
             panic!("PD not aligned");
@@ -365,7 +385,8 @@ impl PDPT {
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct PDPTE { // Page Directory Pointer Table Entry
+pub struct PDPTE {
+    // Page Directory Pointer Table Entry
     data: u64,
 }
 
@@ -401,9 +422,7 @@ impl PDPTE {
     #[inline(always)]
     pub fn pd(&self) -> Option<&'static mut PD> {
         if self.present() {
-            unsafe {
-                Some(&mut *(((self.data as usize) & 0xffffffffff000) as *mut PD))
-            }
+            unsafe { Some(&mut *(((self.data as usize) & 0xffffffffff000) as *mut PD)) }
         } else {
             None
         }
@@ -413,10 +432,10 @@ impl PDPTE {
 #[derive(Debug)]
 #[repr(align(4096))]
 #[repr(C)]
-pub struct PD { // Page Directory
+pub struct PD {
+    // Page Directory
     pub entries: [PDE; PAGE_TABLE_SIZE],
 }
-
 
 impl PD {
     pub unsafe fn new() -> &'static mut Self {
@@ -429,8 +448,7 @@ impl PD {
         &mut *(ptr.unwrap().as_mut_ptr() as *mut PD)
     }
 
-    pub unsafe fn add(&mut self, index: usize, pt: &PT,
-        writable: bool, user_accessable: bool) {
+    pub unsafe fn add(&mut self, index: usize, pt: &PT, writable: bool, user_accessable: bool) {
         let phys_ptr = pt as *const PT as usize;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
             panic!("PT not aligned");
@@ -453,7 +471,8 @@ impl PD {
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct PDE { // Page Directory Entry
+pub struct PDE {
+    // Page Directory Entry
     data: u64,
 }
 
@@ -509,9 +528,7 @@ impl PDE {
     pub fn pt(&self) -> Option<&'static mut PT> {
         if self.present() {
             if !self.big_page_enabled() {
-                unsafe {
-                    Some(&mut *(((self.data as usize) & 0xffffffffff000) as *mut PT))
-                }
+                unsafe { Some(&mut *(((self.data as usize) & 0xffffffffff000) as *mut PT)) }
             } else {
                 None
             }
@@ -524,9 +541,7 @@ impl PDE {
     pub fn big_page(&self) -> Option<&'static PhysPage2MiB> {
         if self.present() {
             if self.big_page_enabled() {
-                unsafe {
-                    Some(&*(((self.data as usize) & 0xfffffffe00000) as *const PhysPage2MiB))
-                }
+                unsafe { Some(&*(((self.data as usize) & 0xfffffffe00000) as *const PhysPage2MiB)) }
             } else {
                 None
             }
@@ -539,7 +554,8 @@ impl PDE {
 #[derive(Debug)]
 #[repr(align(4096))]
 #[repr(C)]
-pub struct PT { // Page Directory
+pub struct PT {
+    // Page Directory
     pub entries: [PTE; PAGE_TABLE_SIZE],
 }
 
@@ -558,8 +574,7 @@ impl PT {
         &mut *(ptr.unwrap().as_mut_ptr() as *mut PT)
     }
 
-    pub unsafe fn add(&mut self, index: usize, page: usize,
-        writable: bool, user_accessable: bool) {
+    pub unsafe fn add(&mut self, index: usize, page: usize, writable: bool, user_accessable: bool) {
         let phys_ptr = page;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
             panic!("Page not aligned");
@@ -582,7 +597,8 @@ impl PT {
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct PTE { // Page Directory Entry
+pub struct PTE {
+    // Page Directory Entry
     data: u64,
 }
 
@@ -638,15 +654,12 @@ impl PTE {
     #[inline(always)]
     pub fn page(&self) -> Option<&'static PhysPage4KiB> {
         if self.present() {
-            unsafe {
-                Some(&*(((self.data as usize) & 0xffffffffff000) as *const PhysPage4KiB))
-            }
+            unsafe { Some(&*(((self.data as usize) & 0xffffffffff000) as *const PhysPage4KiB)) }
         } else {
             None
         }
     }
 }
-
 
 // unsafe as this reference is treated as static, but this is not fully true
 // Should not be held for long

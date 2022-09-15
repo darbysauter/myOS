@@ -1,8 +1,8 @@
-use crate::gdt::{ USER_DATA_SEL, USER_CODE_SEL };
-use crate::memory::mappings::{  ELF_NEW_BASE, ELF_OLD_BASE };
-use crate::memory::stack::{ USER_STACK_TOP };
+use crate::cpu::{read_msr, write_msr};
+use crate::gdt::{USER_CODE_SEL, USER_DATA_SEL};
+use crate::memory::mappings::{ELF_NEW_BASE, ELF_OLD_BASE};
+use crate::memory::stack::USER_STACK_TOP;
 use crate::println;
-use crate::cpu::{ write_msr, read_msr };
 
 pub fn enter_user_mode() -> ! {
     unsafe {
@@ -22,19 +22,14 @@ pub fn enter_user_mode() -> ! {
             in(reg) user_code_sel,
             in(reg) addr_to_exec);
     }
-    loop{}
+    loop {}
 }
 
 pub fn enable_syscalls() {
     let addr_to_exec: usize = (syscall_test as *const () as usize);
     unsafe {
         // enable syscall extension
-        asm!(
-            "mov rcx, 0xC0000080",
-            "rdmsr",
-            "or rax, 1",
-            "wrmsr",
-        );
+        asm!("mov rcx, 0xC0000080", "rdmsr", "or rax, 1", "wrmsr",);
 
         // set syscall/sysret seg selectors
         write_msr(0xC0000081, 0x0010000800000000);
@@ -94,7 +89,7 @@ fn test_syscall(syscall: u64) -> u64 {
             in(reg) syscall,
             out(reg) ret
         );
-        loop{}
+        loop {}
     }
     ret
 

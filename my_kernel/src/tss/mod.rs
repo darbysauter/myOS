@@ -1,26 +1,26 @@
+use crate::memory::stack::KERN_STACK_TOP;
 use alloc::boxed::Box;
 use core::mem;
-use crate::memory::stack::KERN_STACK_TOP;
 
 #[repr(C, packed)]
 pub struct TSS {
-	res0: u32,
-	rsp0: u64,
-	rsp1: u64,
-	rsp2: u64,
-	res1: u32,
-	res2: u32,
-	ist1: u64,
-	ist2: u64,
-	ist3: u64,
-	ist4: u64,
-	ist5: u64,
-	ist6: u64,
-	ist7: u64,
-	res3: u32,
-	res4: u32,
-	res5: u16,
-	iomap_off: u16,
+    res0: u32,
+    rsp0: u64,
+    rsp1: u64,
+    rsp2: u64,
+    res1: u32,
+    res2: u32,
+    ist1: u64,
+    ist2: u64,
+    ist3: u64,
+    ist4: u64,
+    ist5: u64,
+    ist6: u64,
+    ist7: u64,
+    res3: u32,
+    res4: u32,
+    res5: u16,
+    iomap_off: u16,
 }
 
 impl TSS {
@@ -73,4 +73,3 @@ impl TSS {
         (final_value_hi, final_value_lo)
     }
 }
-

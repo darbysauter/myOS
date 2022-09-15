@@ -1,10 +1,10 @@
-use alloc::alloc::Layout;
-use core::ptr;
-use core::mem;
-use crate::{ println, print };
 use crate::alloc::vec::Vec;
-use crate::memory::page_table::PhysPage4KiB;
 use crate::memory::heap::translate_usize_to_virt;
+use crate::memory::page_table::PhysPage4KiB;
+use crate::{print, println};
+use alloc::alloc::Layout;
+use core::mem;
+use core::ptr;
 
 #[derive(Debug)]
 struct ListNode {
@@ -53,15 +53,19 @@ impl LinkedListAllocator {
         self.head.next = Some(&mut *node_ptr)
     }
 
-    fn find_region(&mut self, size: usize, align: usize)
-        -> Option<(&'static mut ListNode, usize, Option<(usize, usize)>)> {
+    fn find_region(
+        &mut self,
+        size: usize,
+        align: usize,
+    ) -> Option<(&'static mut ListNode, usize, Option<(usize, usize)>)> {
         let mut current = &mut self.head;
         while let Some(ref mut region) = current.next {
             if let Ok(alloc_start) = Self::alloc_from_region(&region, size, align) {
                 let next = region.next.take();
                 let mut beginning_excess: Option<(usize, usize)> = None;
                 if region.start_addr() < alloc_start {
-                    beginning_excess = Some((region.start_addr(), alloc_start - region.start_addr()));
+                    beginning_excess =
+                        Some((region.start_addr(), alloc_start - region.start_addr()));
                 }
                 let ret = Some((current.next.take().unwrap(), alloc_start, beginning_excess));
                 current.next = next;
@@ -97,8 +101,7 @@ impl LinkedListAllocator {
         total_bytes as u64
     }
 
-    fn alloc_from_region(region: &ListNode, size: usize, align: usize)
-        -> Result<usize, ()> {
+    fn alloc_from_region(region: &ListNode, size: usize, align: usize) -> Result<usize, ()> {
         let alloc_start = align_up(region.start_addr(), align);
         let alloc_end = alloc_start.checked_add(size).ok_or(())?;
 
@@ -110,7 +113,7 @@ impl LinkedListAllocator {
         if excess_size > 0 && excess_size < mem::size_of::<ListNode>() {
             return Err(());
         }
-        
+
         Ok(alloc_start)
     }
 
@@ -122,7 +125,6 @@ impl LinkedListAllocator {
         let size = layout.size().max(mem::size_of::<ListNode>());
         (size, layout.align())
     }
-
 
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
         let (size, align) = LinkedListAllocator::size_align(layout);
@@ -152,12 +154,13 @@ impl LinkedListAllocator {
         self.add_free_region(ptr as usize, size)
     }
 
-    pub fn fix_heap_after_remap(&mut self, heap_regions: &Vec<(& PhysPage4KiB, usize)>) {
+    pub fn fix_heap_after_remap(&mut self, heap_regions: &Vec<(&PhysPage4KiB, usize)>) {
         let mut current = &mut self.head;
         while let Some(ref mut region) = current.next {
             unsafe {
                 let x = region as *mut _ as usize as *mut usize;
-                if *x & 0xFFFF_0000_0000_0000 == 0 { // needs to be translated
+                if *x & 0xFFFF_0000_0000_0000 == 0 {
+                    // needs to be translated
                     // println!("ADDR2: {:#x}", *x);
                     *x = translate_usize_to_virt(heap_regions, *x);
                     // println!("ADDR2: {:#x}", *x);

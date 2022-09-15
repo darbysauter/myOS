@@ -1,11 +1,11 @@
-use core::slice;
+use crate::bootloader_structs::{BootInfo, E820MemoryRegion};
+use crate::elf::ProgHeaderEntry;
+use crate::memory::page_table::*;
+use crate::println;
+use alloc::vec::Vec;
 use core::convert::TryInto;
 use core::mem;
-use crate::bootloader_structs::{ BootInfo, E820MemoryRegion };
-use crate::println;
-use crate::memory::page_table::*;
-use crate::elf::ProgHeaderEntry;
-use alloc::vec::Vec;
+use core::slice;
 
 const INITIAL_STACK_SIZE: usize = 0x2000;
 
@@ -62,8 +62,12 @@ impl LinkedListFrameAllocator {
 
     // This needs to be used when memory is not identity mapped and fully mapped
     // This will need to map in the frame in order to get the 'next' pointer
-    pub fn allocate_and_map(&mut self, pml4: &mut PML4, vaddr: usize,
-        heap_regions: &Vec<(&'static PhysPage4KiB, usize)>) -> Option<&'static VirtPage4KiB> {
+    pub fn allocate_and_map(
+        &mut self,
+        pml4: &mut PML4,
+        vaddr: usize,
+        heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
+    ) -> Option<&'static VirtPage4KiB> {
         if self.frame_count != 0 {
             self.frame_count -= 1;
             unsafe {
@@ -86,8 +90,12 @@ impl LinkedListFrameAllocator {
         None
     }
 
-    pub fn deallocate_and_unmap(&mut self, pml4: &mut PML4, page: &VirtPage4KiB,
-        heap_regions: &Vec<(&PhysPage4KiB, usize)>) {
+    pub fn deallocate_and_unmap(
+        &mut self,
+        pml4: &mut PML4,
+        page: &VirtPage4KiB,
+        heap_regions: &Vec<(&PhysPage4KiB, usize)>,
+    ) {
         if self.frame_count == 0 {
             self.frame_count = 1;
             unsafe {
@@ -139,25 +147,34 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
         panic!("Invalid ELF header");
     }
 
-    let ph_off: usize =
-        u64::from_le_bytes(
-            e.get(0x20..0x28).expect("Couldn't get offset [0]")
-            .try_into().expect("Couldn't get offset [1]"))
-            .try_into().expect("Couldn't get offset [2]");
+    let ph_off: usize = u64::from_le_bytes(
+        e.get(0x20..0x28)
+            .expect("Couldn't get offset [0]")
+            .try_into()
+            .expect("Couldn't get offset [1]"),
+    )
+    .try_into()
+    .expect("Couldn't get offset [2]");
 
-    let ph_ent_size: u16 =
-        u16::from_le_bytes(
-            e.get(0x36..0x38).expect("Couldn't get ent size [0]")
-            .try_into().expect("Couldn't get ent size [1]"))
-            .try_into().expect("Couldn't get ent size [2]");
+    let ph_ent_size: u16 = u16::from_le_bytes(
+        e.get(0x36..0x38)
+            .expect("Couldn't get ent size [0]")
+            .try_into()
+            .expect("Couldn't get ent size [1]"),
+    )
+    .try_into()
+    .expect("Couldn't get ent size [2]");
 
     assert_eq!(ph_ent_size as usize, mem::size_of::<ProgHeaderEntry>());
 
-    let ph_ent_num: u16 =
-        u16::from_le_bytes(
-            e.get(0x38..0x3a).expect("Couldn't get ent num [0]")
-            .try_into().expect("Couldn't get ent num [1]"))
-            .try_into().expect("Couldn't get ent num [2]");
+    let ph_ent_num: u16 = u16::from_le_bytes(
+        e.get(0x38..0x3a)
+            .expect("Couldn't get ent num [0]")
+            .try_into()
+            .expect("Couldn't get ent num [1]"),
+    )
+    .try_into()
+    .expect("Couldn't get ent num [2]");
 
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
@@ -174,8 +191,7 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
                 panic!("Too many segments");
             }
             let start_page = entry.v_addr & 0xfffffffffffff000; // align to 0x1000
-            let end_page =
-                (entry.v_addr + entry.mem_size as usize) & 0xfffffffffffff000; // align to 0x1000
+            let end_page = (entry.v_addr + entry.mem_size as usize) & 0xfffffffffffff000; // align to 0x1000
             seg_avoid[ind] = (start_page, end_page);
             ind += 1;
             if start_page < seg_lowest {
@@ -215,7 +231,7 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
                 let mut skip_page = false;
                 for (start_page, end_page) in seg_avoid {
                     if start_page == 0 {
-                        break
+                        break;
                     }
                     if page_addr >= start_page as u64 && page_addr <= end_page as u64 {
                         skip_page = true;
@@ -259,7 +275,10 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
     }
 
     println!("Phys Mem Initialized");
-    println!("Usable pages: {:#x} Unusable pages: {:#x}", usable_pages, unusable_pages);
+    println!(
+        "Usable pages: {:#x} Unusable pages: {:#x}",
+        usable_pages, unusable_pages
+    );
     (usable_pages, first_page)
 }
 
@@ -334,7 +353,7 @@ fn check_page_table_overlap(page: u64) -> bool {
 
         // println!("PML4 at {:p}", pml4);
         if page == pml4 as *const PML4 as u64 {
-            return true
+            return true;
         }
 
         for pml4e in pml4.entries.iter() {
@@ -342,7 +361,7 @@ fn check_page_table_overlap(page: u64) -> bool {
                 if let Some(pdpt) = pml4e.pdpt() {
                     // println!("PDPT at {:p}", pdpt);
                     if page == pdpt as *const PDPT as u64 {
-                        return true
+                        return true;
                     }
 
                     for pdpte in pdpt.entries.iter() {
@@ -350,7 +369,7 @@ fn check_page_table_overlap(page: u64) -> bool {
                             if let Some(pd) = pdpte.pd() {
                                 // println!("PD at {:p}", pd);
                                 if page == pd as *const PD as u64 {
-                                    return true
+                                    return true;
                                 }
 
                                 for pde in pd.entries.iter() {
@@ -360,7 +379,7 @@ fn check_page_table_overlap(page: u64) -> bool {
                                             if let Some(pt) = pde.pt() {
                                                 // println!("PT at {:p}", pt);
                                                 if page == pt as *const PT as u64 {
-                                                    return true
+                                                    return true;
                                                 }
                                             }
                                         }

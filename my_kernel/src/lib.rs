@@ -10,20 +10,20 @@
 #![feature(box_into_inner)]
 #![feature(vec_into_raw_parts)]
 
-use init::phase1::phase1_init;
 pub use bootloader_structs::BootInfo;
+use init::phase1::phase1_init;
 
-pub mod vga_buffer;
-pub mod memory;
-pub mod elf;
-pub mod init;
+pub mod apic;
 pub mod bootloader_structs;
-pub mod interrupts;
+pub mod cpu;
+pub mod elf;
 pub mod gdt;
+pub mod init;
+pub mod interrupts;
+pub mod memory;
 pub mod tss;
 pub mod user_mode;
-pub mod apic;
-pub mod cpu;
+pub mod vga_buffer;
 
 extern crate alloc;
 

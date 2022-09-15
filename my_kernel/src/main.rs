@@ -2,7 +2,7 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-use my_kernel::{ println, BootInfo, init};
+use my_kernel::{init, println, BootInfo};
 
 // Force calling convention to sysv64
 // Arguments are passed in order of:
@@ -20,4 +20,3 @@ fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     loop {}
 }
-

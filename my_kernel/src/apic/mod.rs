@@ -1,6 +1,6 @@
-use crate::cpu::{ get_cpuid_feature_rdx, read_msr, write_msr };
-use crate::memory::page_table::PML4;
+use crate::cpu::{get_cpuid_feature_rdx, read_msr, write_msr};
 use crate::interrupts::ExtraInterrupts;
+use crate::memory::page_table::PML4;
 
 const APIC_FEATURE_BIT: u16 = 9;
 
@@ -11,15 +11,11 @@ pub fn check_apic() -> bool {
 }
 
 pub fn get_apic_base() -> u64 {
-    unsafe {
-        read_msr(IA32_APIC_BASE_MSR) as u64 & 0xffff_ffff_ffff_f000
-    }
+    unsafe { read_msr(IA32_APIC_BASE_MSR) as u64 & 0xffff_ffff_ffff_f000 }
 }
 
 pub fn set_apic_base(base: u64) {
-    unsafe {
-        write_msr(IA32_APIC_BASE_MSR, base)
-    }
+    unsafe { write_msr(IA32_APIC_BASE_MSR, base) }
 }
 
 pub unsafe fn enable_apic(base: u64) {
@@ -55,9 +51,11 @@ pub fn ident_map_apic_page(base: u64, pml4: &mut PML4) {
 
 pub fn disable_pic() {
     unsafe {
-        asm!("  mov al, 0xff;
+        asm!(
+            "  mov al, 0xff;
                 out 0xa1, al;
-                out 0x21, al;");
+                out 0x21, al;"
+        );
     }
 }
 

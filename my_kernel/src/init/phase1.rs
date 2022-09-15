@@ -1,22 +1,23 @@
-use crate::init::phase2::phase2_init;
-use crate::println;
-use crate::memory::frame_allocator::LinkedListFrameAllocator;
-use crate::memory::heap::{ init_heap_phase1, init_heap_phase2, translate_box,
-    translate_box_vec, fix_heap_after_remap };
-use crate::memory::mappings::{ map_heap, map_elf_at_current_mapping, ident_map_vga_buf,
-    map_elf_at_new_base, ELF_NEW_BASE, ELF_OLD_BASE, unmap_elf_at_original_mapping };
-use crate::memory::stack::{ create_new_stack_and_map, KERN_STACK_TOP };
-use crate::alloc::vec::Vec;
 use crate::alloc::boxed::Box;
-use crate::elf::{ get_loadable_prog_header_entries, ProgHeaderEntry, fix_relocatable_addrs };
-use crate::memory::page_table::{ PML4, PhysPage4KiB };
+use crate::alloc::vec::Vec;
+use crate::apic::{check_apic, get_apic_base, ident_map_apic_page};
 use crate::bootloader_structs::BootInfo;
-use crate::apic::{ check_apic, get_apic_base, ident_map_apic_page };
+use crate::elf::{fix_relocatable_addrs, get_loadable_prog_header_entries, ProgHeaderEntry};
+use crate::init::phase2::phase2_init;
+use crate::memory::frame_allocator::LinkedListFrameAllocator;
+use crate::memory::heap::{
+    fix_heap_after_remap, init_heap_phase1, init_heap_phase2, translate_box, translate_box_vec,
+};
+use crate::memory::mappings::{
+    ident_map_vga_buf, map_elf_at_current_mapping, map_elf_at_new_base, map_heap,
+    unmap_elf_at_original_mapping, ELF_NEW_BASE, ELF_OLD_BASE,
+};
+use crate::memory::page_table::{PhysPage4KiB, PML4};
+use crate::memory::stack::{create_new_stack_and_map, KERN_STACK_TOP};
+use crate::println;
 
 pub fn phase1_init(boot_info: &BootInfo) -> ! {
-    let mut frame_allocator = unsafe {
-        LinkedListFrameAllocator::init(boot_info)
-    };
+    let mut frame_allocator = unsafe { LinkedListFrameAllocator::init(boot_info) };
 
     let (heap_phys, num_pages_1) = init_heap_phase1(&mut frame_allocator);
     let mut heap_phys_regions = init_heap_phase2(&mut frame_allocator, num_pages_1);
@@ -82,14 +83,15 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
     loop {}
 }
 
-
 // Arguments are passed in order of:
 // RDI, RSI, RDX, RCX, R8, R9
 #[no_mangle]
-pub extern "sysv64" fn phase_2_transition(pml4: &mut PML4,
+pub extern "sysv64" fn phase_2_transition(
+    pml4: &mut PML4,
     heap_phys_regions: *mut Vec<(&'static PhysPage4KiB, usize)>,
     frame_alloc: *mut LinkedListFrameAllocator,
-    prog_header_entries: *mut Vec<ProgHeaderEntry>) -> ! {
+    prog_header_entries: *mut Vec<ProgHeaderEntry>,
+) -> ! {
     println!("Entering Phase 2!");
 
     let frame_alloc = unsafe { Box::from_raw(frame_alloc) };
