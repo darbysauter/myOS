@@ -1,6 +1,8 @@
 use core::mem;
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use alloc::vec;
 
 use crate::{
     memory::{
@@ -281,6 +283,8 @@ const ATA_CMD_WRITE_DMA_EX: u8 = 0x35;
 
 const HBA_PxIS_TFES: u32 = 1 << 30; // TFES - Task File Error Status
 
+pub const SECTOR_SIZE: usize = 512;
+
 impl HbaPort {
     pub fn port_rebase(&mut self, heap_regions: &Vec<(&PhysPage4KiB, usize)>) -> Box<PortSetup> {
         self.stop_cmd(); // Stop command engine
@@ -360,16 +364,17 @@ impl HbaPort {
         &mut self,
         startl: u32,
         starth: u32,
-        count: u32,
-        buf: &mut Vec<u16>,
+        count: usize,
         heap_regions: &Vec<(&PhysPage4KiB, usize)>,
-    ) -> bool {
+    ) -> Option<Vec<u8>> {
+        let mut buf: Vec<u8> = vec![0xff; count*SECTOR_SIZE];
+
         let mut count = count;
         self.is = u32::MAX; // Clear pending interrupt bits
         let mut spin = 0; // Spin lock timeout counter
         let slot = self.find_cmdslot();
         if slot.is_none() {
-            return false;
+            return None;
         }
         let slot = slot.unwrap();
 
@@ -399,7 +404,7 @@ impl HbaPort {
         // Last entry
         cmdtbl.prdt_entry[ind].dba = (buf_addr & 0xffffffff) as u32;
         cmdtbl.prdt_entry[ind].dbau = ((buf_addr >> 32) & 0xffffffff) as u32;
-        cmdtbl.prdt_entry[ind].dbc = (count << 9) - 1; // 512 bytes per sector
+        cmdtbl.prdt_entry[ind].dbc = ((count as u32) << 9) - 1; // 512 bytes per sector
         cmdtbl.prdt_entry[ind].interrupt(true);
 
         // Setup command
@@ -451,7 +456,7 @@ impl HbaPort {
             panic!("Read disk error\n");
         }
 
-        return true;
+        return Some(buf);
     }
 
     // Find a free command list slot

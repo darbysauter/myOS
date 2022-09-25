@@ -5,7 +5,7 @@ use crate::alloc::vec::Vec;
 use crate::apic::{
     disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
 };
-use crate::interrupts::*;
+use crate::{interrupts::*, fs};
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::heap::{heap_sanity_check, print_heap};
 use crate::memory::page_table::{PhysPage4KiB, PML4};
@@ -81,15 +81,13 @@ pub fn phase2_init(
         let port_setup = abar.ports[i].port_rebase(&heap_phys_regions);
         ports_setup.push(port_setup);
 
-        let mut data: Vec<u16> = vec![0xffff; 0x2000];
-
         println!("about to read");
 
-        abar.ports[i].read(0, 0, 2, &mut data, &heap_phys_regions);
+        let data = abar.ports[i].read(0, 0, 1, &heap_phys_regions).expect("read failed");
 
-        for i in 0..32 {
-            println!("data: {:#x}", data[i]);
-        }
+        let fs = fs::SimpleFS::new(data);
+
+        println!("{:#?}", fs);
     }
 
     // enable_syscalls();

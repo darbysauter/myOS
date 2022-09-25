@@ -26,6 +26,7 @@ pub mod pci;
 pub mod tss;
 pub mod user_mode;
 pub mod vga_buffer;
+pub mod fs;
 
 extern crate alloc;
 
