@@ -2,8 +2,10 @@ NASM = nasm
 
 bin=build/bin
 kern_bin=my_kernel/target/x86_64-my_os/debug
+disk_img=fs.img
+programs_dir=programs
 
-all: $(bin) $(bin)/boot.bin
+all: $(bin) $(bin)/boot.bin $(bin)/$(disk_img)
 
 $(bin):
 	mkdir -p $(bin)
@@ -23,13 +25,16 @@ kernel:
 	python3 kernheader.py $(kern_bin)/my_kernel $(bin)/header.bin
 	cat $(bin)/header.bin $(kern_bin)/my_kernel > $(bin)/kernel.img
 
+$(bin)/$(disk_img): $(programs_dir)/*
+	python3 filesystem_gen.py $(bin)/$(disk_img) $(programs_dir)
+
 .PHONY : clean
 clean:
 	make -C my_kernel clean
 	rm -rf build $(bin)/boot.bin
 
 run: all
-	qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -m size=4096 -M smm=off -monitor stdio -d int -drive id=disk,file=test.img,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
+	qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -m size=4096 -M smm=off -monitor stdio -d int -drive id=disk,file=$(bin)/$(disk_img),if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
 
 # -monitor stdio
 # -no-reboot

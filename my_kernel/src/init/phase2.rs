@@ -87,7 +87,9 @@ pub fn phase2_init(
 
         abar.ports[i].read(0, 0, 2, &mut data, &heap_phys_regions);
 
-        println!("data: {:#x}", data[0]);
+        for i in 0..32 {
+            println!("data: {:#x}", data[i]);
+        }
     }
 
     // enable_syscalls();
