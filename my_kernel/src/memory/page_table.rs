@@ -1,7 +1,7 @@
 use alloc::alloc::{Global, Layout};
 use core::alloc::Allocator;
 
-use crate::memory::heap::{translate_ref_to_phys, translate_ref_to_virt, HEAP_START};
+use crate::memory::heap::{translate_mut_ref_to_phys, translate_ref_to_virt, HEAP_START};
 use alloc::vec::Vec;
 use core::mem;
 use core::ptr::NonNull;
@@ -33,7 +33,7 @@ impl PML4 {
         let pml4 = &mut *(ptr.unwrap().as_mut_ptr() as *mut PML4);
         let mut pml4_recur = &mut *(ptr.unwrap().as_mut_ptr() as *mut PDPT);
         if let Some(heap_regions) = heap_regions {
-            pml4_recur = translate_ref_to_phys(heap_regions, pml4_recur);
+            pml4_recur = translate_mut_ref_to_phys(heap_regions, pml4_recur);
         }
         pml4.add(RECUR_INDEX, pml4_recur, true, true);
 
@@ -86,7 +86,7 @@ impl PML4 {
         } else {
             let virt_pdpt = PDPT::new();
             let phys_pdpt = if let Some(heap_regions) = heap_regions {
-                translate_ref_to_phys(heap_regions, virt_pdpt)
+                translate_mut_ref_to_phys(heap_regions, virt_pdpt)
             } else {
                 &(*virt_pdpt)
             };
@@ -104,7 +104,7 @@ impl PML4 {
         } else {
             let virt_pd = PD::new();
             let phys_pd = if let Some(heap_regions) = heap_regions {
-                translate_ref_to_phys(heap_regions, virt_pd)
+                translate_mut_ref_to_phys(heap_regions, virt_pd)
             } else {
                 &(*virt_pd)
             };
@@ -122,7 +122,7 @@ impl PML4 {
         } else {
             let virt_pt = PT::new();
             let phys_pt = if let Some(heap_regions) = heap_regions {
-                translate_ref_to_phys(heap_regions, virt_pt)
+                translate_mut_ref_to_phys(heap_regions, virt_pt)
             } else {
                 &(*virt_pt)
             };

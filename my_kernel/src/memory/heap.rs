@@ -105,7 +105,7 @@ pub fn init_heap_phase2(
 }
 
 // virt to phys
-pub unsafe fn translate_ref_to_phys<'a, T>(
+pub unsafe fn translate_mut_ref_to_phys<'a, T>(
     heap_regions: &Vec<(&PhysPage4KiB, usize)>,
     object: &'a mut T,
 ) -> &'a mut T {
@@ -124,6 +124,56 @@ pub unsafe fn translate_ref_to_phys<'a, T>(
         let phys_addr = phys_page + (o & 0xfff);
         // println!("new addr: {:#x}", phys_addr);
         let phys_ref = &mut (*(phys_addr as *mut T));
+        return phys_ref;
+    }
+    panic!("Did not find region");
+}
+
+// virt to phys
+pub unsafe fn translate_ref_to_phys<'a, T>(
+    heap_regions: &Vec<(&PhysPage4KiB, usize)>,
+    object: &'a T,
+) -> &'a T {
+    let o = object as *const T as usize;
+    // println!("orig addr: {:#x}", o);
+    let mut offset: usize = (o - HEAP_START) & 0xffff_ffff_ffff_f000;
+    for (start_page, num_pages) in heap_regions {
+        let offset_in_pages = offset / 0x1000;
+        if offset_in_pages > *num_pages {
+            offset -= num_pages * 0x1000;
+            continue;
+        }
+        // should be in this region
+        let start_page = (*start_page) as *const PhysPage4KiB as usize;
+        let phys_page = start_page + offset;
+        let phys_addr = phys_page + (o & 0xfff);
+        // println!("new addr: {:#x}", phys_addr);
+        let phys_ref = &mut (*(phys_addr as *mut T));
+        return phys_ref;
+    }
+    panic!("Did not find region");
+}
+
+// virt to phys
+pub unsafe fn translate_usize_to_phys(
+    heap_regions: &Vec<(&PhysPage4KiB, usize)>,
+    object: usize,
+) -> usize {
+    let o = object;
+    // println!("orig addr: {:#x}", o);
+    let mut offset: usize = (o - HEAP_START) & 0xffff_ffff_ffff_f000;
+    for (start_page, num_pages) in heap_regions {
+        let offset_in_pages = offset / 0x1000;
+        if offset_in_pages > *num_pages {
+            offset -= num_pages * 0x1000;
+            continue;
+        }
+        // should be in this region
+        let start_page = (*start_page) as *const PhysPage4KiB as usize;
+        let phys_page = start_page + offset;
+        let phys_addr = phys_page + (o & 0xfff);
+        // println!("new addr: {:#x}", phys_addr);
+        let phys_ref = phys_addr;
         return phys_ref;
     }
     panic!("Did not find region");

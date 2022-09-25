@@ -13,6 +13,7 @@
 pub use bootloader_structs::BootInfo;
 use init::phase1::phase1_init;
 
+pub mod ahci;
 pub mod apic;
 pub mod bootloader_structs;
 pub mod cpu;
@@ -21,6 +22,7 @@ pub mod gdt;
 pub mod init;
 pub mod interrupts;
 pub mod memory;
+pub mod pci;
 pub mod tss;
 pub mod user_mode;
 pub mod vga_buffer;

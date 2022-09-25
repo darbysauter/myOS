@@ -29,7 +29,7 @@ clean:
 	rm -rf build $(bin)/boot.bin
 
 run: all
-	qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -m size=4096 -M smm=off -monitor stdio -d int
+	qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -m size=4096 -M smm=off -monitor stdio -d int -drive id=disk,file=test.img,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0
 
 # -monitor stdio
 # -no-reboot

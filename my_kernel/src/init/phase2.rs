@@ -1,8 +1,10 @@
+use alloc::vec;
+
+use crate::ahci::HbaMem;
 use crate::alloc::vec::Vec;
 use crate::apic::{
     disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
 };
-use crate::gdt::*;
 use crate::interrupts::*;
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::heap::{heap_sanity_check, print_heap};
@@ -11,6 +13,7 @@ use crate::memory::stack::create_new_user_stack_and_map;
 use crate::println;
 use crate::tss::*;
 use crate::user_mode::{enable_syscalls, enter_user_mode};
+use crate::{ahci, gdt::*, pci};
 
 // At this point we have elf loadable segments, heap and stack all mapped into high memory
 // The Page tables are on the heap.
@@ -44,9 +47,52 @@ pub fn phase2_init(
     //     asm!("int3");
     // }
 
-    enable_syscalls();
-    create_new_user_stack_and_map(&mut frame_alloc, pml4, &heap_phys_regions);
-    enter_user_mode();
+    let pci_devices = pci::pci_probe();
+
+    let mut abar: usize = 0;
+    for dev in pci_devices {
+        if pci::get_class_id(dev.bus, dev.slot, dev.function) == 0x01
+            && pci::get_sub_class_id(dev.bus, dev.slot, dev.function) == 0x06
+        {
+            println!(
+                "{:#?} prog: {} bar5: {:#x}",
+                dev,
+                pci::get_sub_prog_if(dev.bus, dev.slot, dev.function),
+                pci::get_bar_5(dev.bus, dev.slot, dev.function)
+            );
+            abar = pci::get_bar_5(dev.bus, dev.slot, dev.function) as usize;
+        }
+    }
+
+    let mut abar: &'static mut HbaMem = unsafe {
+        pml4.map_frame_4k(abar, abar, true, false, Some(&heap_phys_regions));
+        &mut *(abar as *mut HbaMem) as &'static mut HbaMem
+    };
+
+    let mut sata_ports = Vec::new();
+    for i in abar.implemented_ports() {
+        if ahci::check_type(&abar.ports[i]) == ahci::AhciDevType::AHCI_DEV_SATA {
+            sata_ports.push(i);
+        }
+    }
+
+    let mut ports_setup = Vec::new();
+    for i in sata_ports {
+        let port_setup = abar.ports[i].port_rebase(&heap_phys_regions);
+        ports_setup.push(port_setup);
+
+        let mut data: Vec<u16> = vec![0xffff; 0x2000];
+
+        println!("about to read");
+
+        abar.ports[i].read(0, 0, 2, &mut data, &heap_phys_regions);
+
+        println!("data: {:#x}", data[0]);
+    }
+
+    // enable_syscalls();
+    // create_new_user_stack_and_map(&mut frame_alloc, pml4, &heap_phys_regions);
+    // enter_user_mode();
 
     // let apic_base = get_apic_base();
     // set_apic_base(apic_base);
