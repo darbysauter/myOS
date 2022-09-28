@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use core::arch::asm;
 
 pub fn pci_config_read_word(bus: u8, slot: u8, func: u8, offset: u8) -> u16 {
     let address: u32;

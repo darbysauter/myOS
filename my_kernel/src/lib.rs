@@ -18,6 +18,7 @@ pub mod apic;
 pub mod bootloader_structs;
 pub mod cpu;
 pub mod elf;
+pub mod fs;
 pub mod gdt;
 pub mod init;
 pub mod interrupts;
@@ -26,7 +27,6 @@ pub mod pci;
 pub mod tss;
 pub mod user_mode;
 pub mod vga_buffer;
-pub mod fs;
 
 extern crate alloc;
 

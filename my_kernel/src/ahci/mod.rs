@@ -1,8 +1,8 @@
 use core::mem;
 
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 use alloc::vec;
+use alloc::vec::Vec;
 
 use crate::{
     memory::{
@@ -367,7 +367,7 @@ impl HbaPort {
         count: usize,
         heap_regions: &Vec<(&PhysPage4KiB, usize)>,
     ) -> Option<Vec<u8>> {
-        let mut buf: Vec<u8> = vec![0xff; count*SECTOR_SIZE];
+        let mut buf: Vec<u8> = vec![0xff; count * SECTOR_SIZE];
 
         let mut count = count;
         self.is = u32::MAX; // Clear pending interrupt bits

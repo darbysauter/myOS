@@ -15,6 +15,7 @@ use crate::memory::mappings::{
 use crate::memory::page_table::{PhysPage4KiB, PML4};
 use crate::memory::stack::{create_new_stack_and_map, KERN_STACK_TOP};
 use crate::println;
+use core::arch::asm;
 
 pub fn phase1_init(boot_info: &BootInfo) -> ! {
     let mut frame_allocator = unsafe { LinkedListFrameAllocator::init(boot_info) };

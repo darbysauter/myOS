@@ -1,4 +1,4 @@
-my_kernel/target
+target
 .DS_Store
 build/
 .vscode

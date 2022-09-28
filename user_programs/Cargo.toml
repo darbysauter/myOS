@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "fib",
+    "user_lib",
+    "init"
+]

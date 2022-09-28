@@ -3,6 +3,7 @@ use crate::gdt::{USER_CODE_SEL, USER_DATA_SEL};
 use crate::memory::mappings::{ELF_NEW_BASE, ELF_OLD_BASE};
 use crate::memory::stack::USER_STACK_TOP;
 use crate::println;
+use core::arch::{asm, global_asm};
 
 pub fn enter_user_mode() -> ! {
     unsafe {

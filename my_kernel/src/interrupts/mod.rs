@@ -2,6 +2,7 @@ pub mod interrupt_handlers;
 
 use crate::interrupts::interrupt_handlers::*;
 use alloc::boxed::Box;
+use core::arch::asm;
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem;

@@ -1,4 +1,5 @@
 use alloc::boxed::Box;
+use core::arch::asm;
 
 #[repr(C, packed)]
 pub struct GDT {

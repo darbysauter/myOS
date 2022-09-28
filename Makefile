@@ -3,7 +3,7 @@ NASM = nasm
 bin=build/bin
 kern_bin=my_kernel/target/x86_64-my_os/debug
 disk_img=fs.img
-programs_dir=programs
+programs_dir=build/user_programs
 
 all: $(bin) $(bin)/boot.bin $(bin)/$(disk_img)
 
@@ -26,6 +26,7 @@ kernel:
 	cat $(bin)/header.bin $(kern_bin)/my_kernel > $(bin)/kernel.img
 
 $(bin)/$(disk_img): $(programs_dir)/*
+	make -C user_programs
 	python3 filesystem_gen.py $(bin)/$(disk_img) $(programs_dir)
 
 .PHONY : clean

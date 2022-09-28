@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 pub fn get_cpuid_feature_rdx(bit: u16) -> bool {
     let mut features: u64;
     unsafe {

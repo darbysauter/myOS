@@ -5,7 +5,6 @@ use crate::alloc::vec::Vec;
 use crate::apic::{
     disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
 };
-use crate::{interrupts::*, fs};
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::heap::{heap_sanity_check, print_heap};
 use crate::memory::page_table::{PhysPage4KiB, PML4};
@@ -14,6 +13,7 @@ use crate::println;
 use crate::tss::*;
 use crate::user_mode::{enable_syscalls, enter_user_mode};
 use crate::{ahci, gdt::*, pci};
+use crate::{fs, interrupts::*};
 
 // At this point we have elf loadable segments, heap and stack all mapped into high memory
 // The Page tables are on the heap.
@@ -83,7 +83,9 @@ pub fn phase2_init(
 
         println!("about to read");
 
-        let data = abar.ports[i].read(0, 0, 1, &heap_phys_regions).expect("read failed");
+        let data = abar.ports[i]
+            .read(0, 0, 1, &heap_phys_regions)
+            .expect("read failed");
 
         let fs = fs::SimpleFS::new(data);
 

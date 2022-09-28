@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 use crate::cpu::{get_cpuid_feature_rdx, read_msr, write_msr};
 use crate::interrupts::ExtraInterrupts;
 use crate::memory::page_table::PML4;
