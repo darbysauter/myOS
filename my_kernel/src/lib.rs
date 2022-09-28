@@ -1,7 +1,5 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
-#![feature(asm)]
-#![feature(global_asm)]
 #![feature(alloc_error_handler)]
 #![feature(const_mut_refs)]
 #![feature(allocator_api)]

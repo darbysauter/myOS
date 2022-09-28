@@ -10,7 +10,7 @@ pub fn enter_user_mode() -> ! {
         let user_data_sel: u64 = USER_DATA_SEL;
         let user_code_sel: u64 = USER_CODE_SEL;
         let user_stack: usize = USER_STACK_TOP;
-        let addr_to_exec: usize = (execute_in_user as *const () as usize);
+        let addr_to_exec: usize = execute_in_user as *const () as usize;
         asm!(
             "push {:r}",
             "push {:r}",
@@ -27,7 +27,7 @@ pub fn enter_user_mode() -> ! {
 }
 
 pub fn enable_syscalls() {
-    let addr_to_exec: usize = (syscall_test as *const () as usize);
+    let addr_to_exec: usize = syscall_test as *const () as usize;
     unsafe {
         // enable syscall extension
         asm!("mov rcx, 0xC0000080", "rdmsr", "or rax, 1", "wrmsr",);

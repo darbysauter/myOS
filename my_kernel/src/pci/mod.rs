@@ -6,7 +6,6 @@ pub fn pci_config_read_word(bus: u8, slot: u8, func: u8, offset: u8) -> u16 {
     let lbus: u32 = bus as u32;
     let lslot: u32 = slot as u32;
     let lfunc: u32 = func as u32;
-    let mut tmp: u16 = 0;
 
     // Create configuration address as per Figure 1
     address = ((lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset as u32 & 0xFC) | (0x80000000))
@@ -16,7 +15,7 @@ pub fn pci_config_read_word(bus: u8, slot: u8, func: u8, offset: u8) -> u16 {
     outl(0xCF8, address);
     // Read in the data
     // (offset & 2) * 8) = 0 will choose the first word of the 32-bit register
-    tmp = ((inl(0xCFC) >> ((offset & 2) * 8)) & 0xFFFF) as u16;
+    let tmp = ((inl(0xCFC) >> ((offset & 2) * 8)) & 0xFFFF) as u16;
     return tmp;
 }
 

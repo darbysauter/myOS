@@ -1,6 +1,5 @@
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::page_table::{PhysPage4KiB, VirtPage4KiB, PML4};
-use crate::println;
 use alloc::vec::Vec;
 
 pub const STACK_SIZE: usize = 2048 * 1024; // 2048 KiB, this should always be a multiple of 4KiB

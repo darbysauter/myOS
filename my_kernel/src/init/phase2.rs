@@ -64,7 +64,7 @@ pub fn phase2_init(
         }
     }
 
-    let mut abar: &'static mut HbaMem = unsafe {
+    let abar: &'static mut HbaMem = unsafe {
         pml4.map_frame_4k(abar, abar, true, false, Some(&heap_phys_regions));
         &mut *(abar as *mut HbaMem) as &'static mut HbaMem
     };

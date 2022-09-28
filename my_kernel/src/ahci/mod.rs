@@ -4,12 +4,9 @@ use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::{
-    memory::{
-        heap::{translate_ref_to_phys, translate_usize_to_phys, translate_usize_to_virt},
-        page_table::PhysPage4KiB,
-    },
-    println,
+use crate::memory::{
+    heap::{translate_ref_to_phys, translate_usize_to_phys, translate_usize_to_virt},
+    page_table::PhysPage4KiB,
 };
 
 #[allow(dead_code)]
@@ -462,9 +459,9 @@ impl HbaPort {
     // Find a free command list slot
     fn find_cmdslot(&mut self) -> Option<usize> {
         // If not set in SACT and CI, the slot is free
-        let mut slots = (self.sact | self.ci);
+        let mut slots = self.sact | self.ci;
         for i in 0..32 {
-            if ((slots & 1) == 0) {
+            if (slots & 1) == 0 {
                 return Some(i);
             }
             slots >>= 1;
