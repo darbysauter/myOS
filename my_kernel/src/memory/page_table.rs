@@ -2,6 +2,7 @@ use alloc::alloc::{Global, Layout};
 use core::alloc::Allocator;
 
 use crate::memory::heap::{translate_mut_ref_to_phys, translate_ref_to_virt, HEAP_START};
+use crate::println;
 use alloc::vec::Vec;
 use core::arch::asm;
 use core::mem;
@@ -25,6 +26,7 @@ impl PML4 {
     pub unsafe fn new(
         heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>,
     ) -> &'static mut Self {
+        // TODO: Why did i do static ref???
         let ptr = Global.allocate_zeroed(Layout::new::<PML4>());
 
         if ptr.is_err() {
@@ -133,7 +135,7 @@ impl PML4 {
         let pte = &pt.entries[pt_ind];
 
         if pte.present() {
-            panic!("pte already maps a frame");
+            panic!("pte already maps a frame - vaddr: {:#x}", vaddr);
         } else {
             pt.add(pt_ind, paddr, writable, user_accessable);
         }
@@ -578,7 +580,7 @@ impl PT {
     pub unsafe fn add(&mut self, index: usize, page: usize, writable: bool, user_accessable: bool) {
         let phys_ptr = page;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
-            panic!("Page not aligned");
+            panic!("Page not aligned {:#x}", phys_ptr);
         }
         if index >= self.entries.len() {
             panic!("index out of range");

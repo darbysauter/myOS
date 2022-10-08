@@ -7,7 +7,7 @@ use user_lib::syscalls::print;
 
 #[no_mangle]
 pub extern "sysv64" fn _start() -> ! {
-    print();
+    // print();
     loop {}
 }
 

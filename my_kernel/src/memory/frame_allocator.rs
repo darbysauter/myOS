@@ -67,7 +67,7 @@ impl LinkedListFrameAllocator {
         pml4: &mut PML4,
         vaddr: usize,
         heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
-    ) -> Option<&'static VirtPage4KiB> {
+    ) -> Option<(&'static VirtPage4KiB, usize)> {
         if self.frame_count != 0 {
             self.frame_count -= 1;
             unsafe {
@@ -79,6 +79,38 @@ impl LinkedListFrameAllocator {
                 pml4.map_frame_4k(phys_page, virt_page, true, true, Some(heap_regions));
 
                 let next = *(virt_page as *mut usize);
+
+                self.next = next;
+                return Some((&*(virt_page as *const VirtPage4KiB), phys_page));
+            }
+        }
+        if self.next != 0xdeadbeef {
+            panic!("Next was not set to the end singifier");
+        }
+        None
+    }
+
+    pub fn allocate_and_map_for_other(
+        &mut self,
+        pml4: &mut PML4,
+        other_pml4: &mut PML4,
+        vaddr: usize,
+        heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
+    ) -> Option<&'static VirtPage4KiB> {
+        if self.frame_count != 0 {
+            self.frame_count -= 1;
+            unsafe {
+                // phys addr
+                let phys_page = self.next;
+                let virt_page = vaddr;
+                // must map phys addr to some virt addr
+                // then get the new next pointer from virt addr
+                pml4.map_frame_4k(phys_page, virt_page, true, true, Some(heap_regions));
+                other_pml4.map_frame_4k(phys_page, virt_page, true, true, Some(heap_regions));
+
+                let next = *(virt_page as *mut usize);
+
+                pml4.unmap_frame_4k(&*(virt_page as *const VirtPage4KiB), Some(heap_regions));
 
                 self.next = next;
                 return Some(&*(virt_page as *const VirtPage4KiB));

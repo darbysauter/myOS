@@ -1,5 +1,5 @@
 user_programs=../build/user_programs
-output=target/debug
+output=target/x86_64-my_os/debug
 
 build_kernel:
 	cargo fmt

@@ -5,7 +5,8 @@ use alloc::borrow::ToOwned;
 use alloc::vec;
 use alloc::{string::String, vec::Vec};
 
-use crate::ahci::SECTOR_SIZE;
+use crate::ahci::{HbaPort, SECTOR_SIZE};
+use crate::memory::page_table::PhysPage4KiB;
 
 #[derive(Debug)]
 pub struct SimpleFS {
@@ -72,6 +73,29 @@ impl SimpleFS {
         }
 
         SimpleFS { files: files }
+    }
+
+    pub fn load_file(
+        &self,
+        name: &str,
+        port: &mut HbaPort,
+        heap_phys_regions: &Vec<(&'static PhysPage4KiB, usize)>,
+    ) -> Option<Vec<u8>> {
+        for file in self.files.iter() {
+            if file.name == name {
+                let startl = (file.offset / SECTOR_SIZE) as u32;
+                let starth = ((file.offset / SECTOR_SIZE) >> 32) as u32;
+                let mut sectors = file.size / SECTOR_SIZE;
+                if file.size % SECTOR_SIZE != 0 {
+                    sectors += 1;
+                }
+                return Some(
+                    port.read(startl, starth, sectors, &heap_phys_regions)
+                        .expect("read failed"),
+                );
+            }
+        }
+        None
     }
 }
 

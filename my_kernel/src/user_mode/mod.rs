@@ -1,27 +1,39 @@
+use alloc::vec::Vec;
+
 use crate::cpu::{read_msr, write_msr};
 use crate::gdt::{USER_CODE_SEL, USER_DATA_SEL};
+use crate::memory::heap::translate_usize_to_phys;
 use crate::memory::mappings::{ELF_NEW_BASE, ELF_OLD_BASE};
+use crate::memory::page_table::{PhysPage4KiB, PML4};
 use crate::memory::stack::USER_STACK_TOP;
 use crate::println;
 use core::arch::{asm, global_asm};
 
-pub fn enter_user_mode() -> ! {
+pub fn enter_user_mode(
+    entry_point: u64,
+    user_pml4: &mut PML4,
+    heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
+) -> ! {
     unsafe {
+        let cr3 = user_pml4 as *const _ as usize;
+        let cr3 = translate_usize_to_phys(heap_regions, cr3);
         let user_data_sel: u64 = USER_DATA_SEL;
         let user_code_sel: u64 = USER_CODE_SEL;
         let user_stack: usize = USER_STACK_TOP;
-        let addr_to_exec: usize = execute_in_user as *const () as usize;
+
         asm!(
+            "mov cr3, {:r}",
             "push {:r}",
             "push {:r}",
             "pushfq",
             "push {:r}",
             "push {:r}",
             "iretq",
+            in(reg) cr3,
             in(reg) user_data_sel,
             in(reg) user_stack,
             in(reg) user_code_sel,
-            in(reg) addr_to_exec);
+            in(reg) entry_point);
     }
     loop {}
 }
@@ -45,22 +57,22 @@ extern "C" {
 }
 
 global_asm!(
-    ".data",
-    ".global",
-    "rsp_storage:",
-    ".quad  0xffeeddccbbaa9988",
-    ".global",
-    "rcx_storage:",
-    ".quad  0xffeeddccbbaa9988",
-    ".text",
-    ".global",
-    "syscall_test:",
-    "mov rsp_storage[rip], rsp",
-    "mov rcx_storage[rip], rcx",
-    "call syscall_handler",
-    "mov rsp, rsp_storage[rip]",
-    "mov rcx, rcx_storage[rip]",
-    "sysretq"
+    ".data
+    .global
+    rsp_storage:
+    .quad  0xffeeddccbbaa9988
+    .global
+    rcx_storage:
+    .quad  0xffeeddccbbaa9988
+    .text
+    .global
+    syscall_test:
+    mov rsp_storage[rip], rsp
+    mov rcx_storage[rip], rcx
+    call syscall_handler[rip]
+    mov rsp, rsp_storage[rip]
+    mov rcx, rcx_storage[rip]
+    sysretq"
 );
 
 #[no_mangle]

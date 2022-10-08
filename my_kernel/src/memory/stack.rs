@@ -42,7 +42,8 @@ pub fn create_new_stack_and_map(
 
 pub fn create_new_user_stack_and_map(
     frame_alloc: &mut LinkedListFrameAllocator,
-    pml4: &mut PML4,
+    kern_pml4: &mut PML4,
+    user_pml4: &mut PML4,
     heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
 ) -> &'static VirtPage4KiB {
     let user_top_page = USER_STACK_TOP & 0xfffffffffffff000;
@@ -51,7 +52,9 @@ pub fn create_new_user_stack_and_map(
     let mut last_page: usize = 0x0;
     let mut first_page: usize = 0x0;
     for vpage in (user_bot_page..user_top_page).step_by(0x1000) {
-        if let Some(new_page) = frame_alloc.allocate_and_map(pml4, vpage, heap_regions) {
+        if let Some(new_page) =
+            frame_alloc.allocate_and_map_for_other(kern_pml4, user_pml4, vpage, heap_regions)
+        {
             let new_page = new_page as *const VirtPage4KiB as usize;
             if last_page != 0 && last_page + 0x1000 != new_page {
                 panic!(

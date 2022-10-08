@@ -5,8 +5,11 @@ use crate::alloc::vec::Vec;
 use crate::apic::{
     disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
 };
+use crate::elf::ProgHeaderEntry;
+use crate::elf_loader::ElfLoader;
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::heap::{heap_sanity_check, print_heap};
+use crate::memory::mappings::map_kernel_elf_into_user;
 use crate::memory::page_table::{PhysPage4KiB, PML4};
 use crate::memory::stack::create_new_user_stack_and_map;
 use crate::println;
@@ -23,6 +26,8 @@ pub fn phase2_init(
     pml4: &mut PML4,
     mut frame_alloc: LinkedListFrameAllocator,
     heap_phys_regions: Vec<(&'static PhysPage4KiB, usize)>,
+    prog_header_entries: Vec<ProgHeaderEntry>,
+    stack_phys: *const PhysPage4KiB,
 ) -> ! {
     // memory diagnostics
     println!("frame alloc has {:#x} free pages", frame_alloc.frame_count);
@@ -65,7 +70,7 @@ pub fn phase2_init(
     }
 
     let abar: &'static mut HbaMem = unsafe {
-        pml4.map_frame_4k(abar, abar, true, false, Some(&heap_phys_regions));
+        pml4.map_frame_4k(abar, abar, true, true, Some(&heap_phys_regions));
         &mut *(abar as *mut HbaMem) as &'static mut HbaMem
     };
 
@@ -76,25 +81,40 @@ pub fn phase2_init(
         }
     }
 
-    let mut ports_setup = Vec::new();
-    for i in sata_ports {
-        let port_setup = abar.ports[i].port_rebase(&heap_phys_regions);
-        ports_setup.push(port_setup);
+    // Only one connected drive expected
+    assert_eq!(sata_ports.len(), 1);
+    let sata_port_ind = sata_ports[0];
+    let port_setup = abar.ports[sata_port_ind].port_rebase(&heap_phys_regions);
 
-        println!("about to read");
+    println!("about to read");
 
-        let data = abar.ports[i]
-            .read(0, 0, 1, &heap_phys_regions)
-            .expect("read failed");
+    let data = abar.ports[sata_port_ind]
+        .read(0, 0, 1, &heap_phys_regions)
+        .expect("read failed");
 
-        let fs = fs::SimpleFS::new(data);
+    let fs = fs::SimpleFS::new(data);
 
-        println!("{:#?}", fs);
-    }
+    let file_data = fs
+        .load_file("init", &mut abar.ports[sata_port_ind], &heap_phys_regions)
+        .expect("no init file");
 
-    // enable_syscalls();
-    // create_new_user_stack_and_map(&mut frame_alloc, pml4, &heap_phys_regions);
-    // enter_user_mode();
+    let (user_pml4, entry_point) = ElfLoader::load(
+        file_data,
+        &mut frame_alloc,
+        pml4,
+        &heap_phys_regions,
+        stack_phys,
+    );
+    println!("Mapping kernel to user");
+    map_kernel_elf_into_user(&prog_header_entries, user_pml4, &heap_phys_regions);
+    // TODO put this in above func
+
+    println!("Enabling syscalls");
+    enable_syscalls();
+    println!("Creating user stack");
+    create_new_user_stack_and_map(&mut frame_alloc, pml4, user_pml4, &heap_phys_regions);
+    println!("Entering user TSS: {:#x} {:#x}", tss_hi, tss_lo);
+    enter_user_mode(entry_point, user_pml4, &heap_phys_regions);
 
     // let apic_base = get_apic_base();
     // set_apic_base(apic_base);

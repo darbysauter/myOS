@@ -43,4 +43,4 @@ run: all
 
 debug: all
 	# qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -S -s -m size=4096
-	qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -S -s -m size=4096 -d int -M smm=off -monitor stdio
+	qemu-system-x86_64 -drive format=raw,file=$(bin)/boot.bin -S -s -m size=4096 -d int -M smm=off -monitor stdio  -drive id=disk,file=$(bin)/$(disk_img),if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0

@@ -301,9 +301,9 @@ impl HbaPort {
         self.fbu = ((fis_entry >> 32) & 0xffffffff) as u32;
 
         for i in 0..32 {
-            port_setup.cmd_list[i].prdtl = 8; // 8 prdt entries per command table
-                                              // 256 bytes per command table, 64+16+48+16*8
-                                              // Command table offset: 40K + 8K*portno + cmdheader_index*256
+            port_setup.cmd_list[i].prdtl = 1024; // 8 prdt entries per command table
+                                                 // 256 bytes per command table, 64+16+48+16*8
+                                                 // Command table offset: 40K + 8K*portno + cmdheader_index*256
             let cmd_table = unsafe {
                 (translate_ref_to_phys(heap_regions, &(port_setup.cmd_table[i]))) as *const _
                     as usize
@@ -603,7 +603,7 @@ struct HbaCmdTbl {
     rsv: [u8; 48], // Reserved
 
     // 0x80
-    prdt_entry: [HbaPrdtEntry; 32], // Physical region descriptor table entries, 0 ~ 65535
+    prdt_entry: [HbaPrdtEntry; 1024], // Physical region descriptor table entries, 0 ~ 65535
 }
 
 impl HbaCmdTbl {
@@ -624,7 +624,7 @@ impl Default for HbaCmdTbl {
             cfis: [0; 64],
             acmd: [0; 16],
             rsv: [0; 48],
-            prdt_entry: [HbaPrdtEntry::default(); 32],
+            prdt_entry: [HbaPrdtEntry::default(); 1024],
         }
     }
 }

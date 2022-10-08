@@ -4,7 +4,7 @@ use core::convert::TryInto;
 use core::mem;
 use core::slice;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct ProgHeaderEntry {
     pub seg_type: u32,
@@ -167,6 +167,7 @@ pub fn get_global_offset_table(boot_info: &BootInfo) -> &mut [usize] {
     }
     panic!("Could not find GOT");
 }
+
 pub fn fix_relocatable_addrs(boot_info: &BootInfo, offset: usize) {
     let e = {
         let ptr = boot_info.elf_location as *const u8;

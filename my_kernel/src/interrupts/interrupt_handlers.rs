@@ -18,7 +18,7 @@ pub extern "x86-interrupt" fn gp_handler(sf: InterruptStackFrame, error: u64) {
 }
 
 pub extern "x86-interrupt" fn pf_handler(sf: InterruptStackFrame, error: u64) {
-    println!("EXCEPTION: PF\n{:#?} error: {}", sf, error);
+    println!("EXCEPTION: PF\n{:#?} error: {:#b}", sf, error);
     loop {}
 }
 

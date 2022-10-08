@@ -28,12 +28,12 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
         let pml4 = PML4::new(None);
         // map in stack, ELF regions twice, pagetable recursively
 
-        let _stack_phys = create_new_stack_and_map(&mut frame_allocator, pml4);
+        let stack_phys = create_new_stack_and_map(&mut frame_allocator, pml4);
 
         map_heap(&heap_phys_regions, pml4);
         map_elf_at_current_mapping(boot_info, pml4);
         map_elf_at_new_base(boot_info, pml4);
-        ident_map_vga_buf(pml4);
+        ident_map_vga_buf(pml4, None);
 
         if check_apic() {
             println!("APIC AVALIBLE");
@@ -78,7 +78,8 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
             in("rdi") pml4_boxed as *mut PML4 as usize,
             in("rsi") heap_regions_boxed as *mut Vec<(&PhysPage4KiB, usize)> as usize,
             in("rdx") frame_alloc_boxed as *mut LinkedListFrameAllocator as usize,
-            in("rcx") prog_header_entries_boxed as *mut Vec<(&PhysPage4KiB, usize)> as usize
+            in("rcx") prog_header_entries_boxed as *mut Vec<(&PhysPage4KiB, usize)> as usize,
+            in("r8") stack_phys as *const _ as usize
         );
     }
     loop {}
@@ -92,6 +93,7 @@ pub extern "sysv64" fn phase_2_transition(
     heap_phys_regions: *mut Vec<(&'static PhysPage4KiB, usize)>,
     frame_alloc: *mut LinkedListFrameAllocator,
     prog_header_entries: *mut Vec<ProgHeaderEntry>,
+    stack_phys: *const PhysPage4KiB,
 ) -> ! {
     println!("Entering Phase 2!");
 
@@ -108,5 +110,11 @@ pub extern "sysv64" fn phase_2_transition(
 
     fix_heap_after_remap(&heap_phys_regions);
 
-    phase2_init(pml4, frame_alloc, heap_phys_regions)
+    phase2_init(
+        pml4,
+        frame_alloc,
+        heap_phys_regions,
+        prog_header_entries,
+        stack_phys,
+    )
 }
