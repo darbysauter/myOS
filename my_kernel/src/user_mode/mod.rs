@@ -1,7 +1,11 @@
 use alloc::vec::Vec;
 
+use crate::apic::{
+    disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
+};
 use crate::cpu::{read_msr, write_msr};
 use crate::gdt::{USER_CODE_SEL, USER_DATA_SEL};
+use crate::interrupts::enable_hardware_interrupts;
 use crate::memory::heap::translate_usize_to_phys;
 use crate::memory::mappings::{ELF_NEW_BASE, ELF_OLD_BASE};
 use crate::memory::page_table::{current_page_table, PhysPage4KiB, PML4};
@@ -113,6 +117,7 @@ global_asm!(
 enum Syscall {
     Print = 0,
     CreateProc = 1,
+    EnableTimer = 2,
 }
 
 #[no_mangle]
@@ -124,7 +129,24 @@ extern "sysv64" fn syscall_handler(
     arg4: u64,
     syscall: Syscall,
 ) -> u64 {
-    println!("Syscall num: {:#?}", syscall);
+    match syscall {
+        Syscall::Print => println!("Syscall num: {:#?}", syscall),
+        Syscall::CreateProc => println!("Syscall num: {:#?}", syscall),
+        Syscall::EnableTimer => {
+            println!("Enabling timer");
+            let apic_base = get_apic_base();
+            set_apic_base(apic_base);
+            unsafe {
+                enable_apic(apic_base);
+                set_apic_tpr(apic_base, 0);
+            }
+            disable_pic();
+            println!("Enabling hwi");
+            enable_hardware_interrupts();
+            println!("starting timer");
+            start_apic_timer(apic_base);
+        }
+    }
 
     let ret: u64 = 0x11223344AABBCCDD;
     ret

@@ -4,6 +4,7 @@ use core::arch::asm;
 enum Syscall {
     Print = 0,
     CreateProc = 1,
+    EnableTimer = 2,
 }
 
 unsafe extern "C" fn syscall_0(syscall: Syscall) -> u64 {
@@ -26,4 +27,8 @@ pub fn print() -> u64 {
 
 pub fn create_proc() -> u64 {
     unsafe { syscall_0(Syscall::CreateProc) }
+}
+
+pub fn enable_timer() -> u64 {
+    unsafe { syscall_0(Syscall::EnableTimer) }
 }

@@ -3,7 +3,7 @@
 
 use core::panic::PanicInfo;
 
-use user_lib::syscalls::{create_proc, print};
+use user_lib::syscalls::{create_proc, enable_timer, print};
 
 #[no_mangle]
 pub extern "sysv64" fn _start() -> ! {
@@ -11,6 +11,7 @@ pub extern "sysv64" fn _start() -> ! {
     create_proc();
     print();
     create_proc();
+    enable_timer();
     loop {}
 }
 
