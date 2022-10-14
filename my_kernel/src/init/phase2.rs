@@ -59,12 +59,6 @@ pub fn phase2_init(
         if pci::get_class_id(dev.bus, dev.slot, dev.function) == 0x01
             && pci::get_sub_class_id(dev.bus, dev.slot, dev.function) == 0x06
         {
-            println!(
-                "{:#?} prog: {} bar5: {:#x}",
-                dev,
-                pci::get_sub_prog_if(dev.bus, dev.slot, dev.function),
-                pci::get_bar_5(dev.bus, dev.slot, dev.function)
-            );
             abar = pci::get_bar_5(dev.bus, dev.slot, dev.function) as usize;
         }
     }
@@ -86,13 +80,12 @@ pub fn phase2_init(
     let sata_port_ind = sata_ports[0];
     let port_setup = abar.ports[sata_port_ind].port_rebase(&heap_phys_regions);
 
-    println!("about to read");
-
     let data = abar.ports[sata_port_ind]
         .read(0, 0, 1, &heap_phys_regions)
         .expect("read failed");
 
     let fs = fs::SimpleFS::new(data);
+    println!("{:#?}", fs);
 
     let file_data = fs
         .load_file("init", &mut abar.ports[sata_port_ind], &heap_phys_regions)
@@ -105,15 +98,11 @@ pub fn phase2_init(
         &heap_phys_regions,
         stack_phys,
     );
-    println!("Mapping kernel to user");
     map_kernel_elf_into_user(&prog_header_entries, user_pml4, &heap_phys_regions);
     // TODO put this in above func
 
-    println!("Enabling syscalls");
     enable_syscalls();
-    println!("Creating user stack");
     create_new_user_stack_and_map(&mut frame_alloc, pml4, user_pml4, &heap_phys_regions);
-    println!("Entering user TSS: {:#x} {:#x}", tss_hi, tss_lo);
     enter_user_mode(entry_point, user_pml4, &heap_phys_regions);
 
     // let apic_base = get_apic_base();

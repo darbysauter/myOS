@@ -3,11 +3,14 @@
 
 use core::panic::PanicInfo;
 
-use user_lib::syscalls::print;
+use user_lib::syscalls::{create_proc, print};
 
 #[no_mangle]
 pub extern "sysv64" fn _start() -> ! {
     print();
+    create_proc();
+    print();
+    create_proc();
     loop {}
 }
 

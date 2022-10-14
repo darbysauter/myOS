@@ -1,11 +1,12 @@
 use core::arch::asm;
 
 #[repr(u64)]
-enum Syscalls {
+enum Syscall {
     Print = 0,
+    CreateProc = 1,
 }
 
-unsafe extern "C" fn syscall_0(syscall: Syscalls) -> u64 {
+unsafe extern "C" fn syscall_0(syscall: Syscall) -> u64 {
     let mut ret: u64;
     unsafe {
         asm!(
@@ -20,5 +21,9 @@ unsafe extern "C" fn syscall_0(syscall: Syscalls) -> u64 {
 }
 
 pub fn print() -> u64 {
-    unsafe { syscall_0(Syscalls::Print) }
+    unsafe { syscall_0(Syscall::Print) }
+}
+
+pub fn create_proc() -> u64 {
+    unsafe { syscall_0(Syscall::CreateProc) }
 }

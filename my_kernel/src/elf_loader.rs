@@ -32,7 +32,7 @@ impl ElfLoader {
     ) -> (&'static mut PML4, u64) {
         let magic: u32 =
             u32::from_le_bytes(file_data[0..4].try_into().expect("Couldn't get offset [1]"));
-        assert_eq!(magic, 0x464C457F);
+        assert_eq!(magic, 0x464C457F, "magic was {:#x}", magic);
 
         let prog_headers = ElfLoader::get_prog_header_entries(&file_data);
 

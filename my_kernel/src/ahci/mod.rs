@@ -364,7 +364,7 @@ impl HbaPort {
         count: usize,
         heap_regions: &Vec<(&PhysPage4KiB, usize)>,
     ) -> Option<Vec<u8>> {
-        let mut buf: Vec<u8> = vec![0xff; count * SECTOR_SIZE];
+        let mut buf: Vec<u8> = vec![0xaa; count * SECTOR_SIZE];
 
         let mut count = count;
         self.is = u32::MAX; // Clear pending interrupt bits

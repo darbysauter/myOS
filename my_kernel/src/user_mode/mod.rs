@@ -5,7 +5,7 @@ use crate::gdt::{USER_CODE_SEL, USER_DATA_SEL};
 use crate::memory::heap::translate_usize_to_phys;
 use crate::memory::mappings::{ELF_NEW_BASE, ELF_OLD_BASE};
 use crate::memory::page_table::{current_page_table, PhysPage4KiB, PML4};
-use crate::memory::stack::USER_STACK_TOP;
+use crate::memory::stack::{KERN_STACK_TOP, USER_STACK_TOP};
 use crate::println;
 use core::arch::{asm, global_asm};
 
@@ -17,6 +17,7 @@ pub fn enter_user_mode(
     unsafe {
         // save kernel cr3
         kern_cr3 = current_page_table() as *const _ as usize;
+        syscall_stack = KERN_STACK_TOP;
         let cr3 = user_pml4 as *const _ as usize;
         let cr3 = translate_usize_to_phys(heap_regions, cr3);
         let user_data_sel: u64 = USER_DATA_SEL;
@@ -57,6 +58,7 @@ pub fn enable_syscalls() {
 extern "C" {
     fn syscall_test();
     static mut kern_cr3: usize;
+    static mut syscall_stack: usize;
 }
 
 global_asm!(
@@ -78,7 +80,6 @@ global_asm!(
     syscall_stack:
     .quad  0xFFFFF00000000000
 
-
     .text
 
     .global
@@ -97,6 +98,7 @@ global_asm!(
     mov rcx, kern_cr3[rip]
     mov cr3, rcx
     mov rcx, r10
+    mov r9, rax
     call syscall_handler
     mov rcx, user_cr3[rip]
     mov cr3, rcx
@@ -106,9 +108,23 @@ global_asm!(
     sysretq"
 );
 
+#[repr(u64)]
+#[derive(Debug)]
+enum Syscall {
+    Print = 0,
+    CreateProc = 1,
+}
+
 #[no_mangle]
-extern "C" fn syscall_handler(syscall: u64) -> u64 {
-    println!("Syscall num: {}", syscall);
+extern "sysv64" fn syscall_handler(
+    arg0: u64,
+    arg1: u64,
+    arg2: u64,
+    arg3: u64,
+    arg4: u64,
+    syscall: Syscall,
+) -> u64 {
+    println!("Syscall num: {:#?}", syscall);
 
     let ret: u64 = 0x11223344AABBCCDD;
     ret
