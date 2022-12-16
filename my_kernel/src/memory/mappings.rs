@@ -2,13 +2,13 @@ use crate::bootloader_structs::BootInfo;
 use crate::elf::ProgHeaderEntry;
 use crate::memory::heap::{HEAP_SIZE, HEAP_START};
 use crate::memory::page_table::{PhysPage4KiB, VirtPage4KiB, PML4};
-use crate::println;
+
 use alloc::vec::Vec;
 use core::convert::TryInto;
 use core::mem;
 use core::slice;
 
-use super::heap::{translate_usize_to_phys, translate_usize_to_virt};
+
 
 pub fn map_heap(heap_regions: &Vec<(&PhysPage4KiB, usize)>, pml4: &mut PML4) {
     let mut vpage = HEAP_START;

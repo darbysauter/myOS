@@ -3,11 +3,11 @@ use alloc::vec::Vec;
 use crate::apic::{
     disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
 };
-use crate::cpu::{read_msr, write_msr};
+use crate::cpu::{write_msr};
 use crate::gdt::{USER_CODE_SEL, USER_DATA_SEL};
 use crate::interrupts::enable_hardware_interrupts;
 use crate::memory::heap::translate_usize_to_phys;
-use crate::memory::mappings::{ELF_NEW_BASE, ELF_OLD_BASE};
+
 use crate::memory::page_table::{current_page_table, PhysPage4KiB, PML4};
 use crate::memory::stack::{KERN_STACK_TOP, USER_STACK_TOP};
 use crate::println;
@@ -122,11 +122,11 @@ enum Syscall {
 
 #[no_mangle]
 extern "sysv64" fn syscall_handler(
-    arg0: u64,
-    arg1: u64,
-    arg2: u64,
-    arg3: u64,
-    arg4: u64,
+    _arg0: u64,
+    _arg1: u64,
+    _arg2: u64,
+    _arg3: u64,
+    _arg4: u64,
     syscall: Syscall,
 ) -> u64 {
     match syscall {

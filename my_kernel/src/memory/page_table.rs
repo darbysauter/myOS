@@ -2,7 +2,7 @@ use alloc::alloc::{Global, Layout};
 use core::alloc::Allocator;
 
 use crate::memory::heap::{translate_mut_ref_to_phys, translate_ref_to_virt, HEAP_START};
-use crate::println;
+
 use alloc::vec::Vec;
 use core::arch::asm;
 use core::mem;

@@ -1,10 +1,8 @@
-use alloc::vec;
+
 
 use crate::ahci::HbaMem;
 use crate::alloc::vec::Vec;
-use crate::apic::{
-    disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
-};
+
 use crate::elf::ProgHeaderEntry;
 use crate::elf_loader::ElfLoader;
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
@@ -78,7 +76,7 @@ pub fn phase2_init(
     // Only one connected drive expected
     assert_eq!(sata_ports.len(), 1);
     let sata_port_ind = sata_ports[0];
-    let port_setup = abar.ports[sata_port_ind].port_rebase(&heap_phys_regions);
+    let _port_setup = abar.ports[sata_port_ind].port_rebase(&heap_phys_regions);
 
     let data = abar.ports[sata_port_ind]
         .read(0, 0, 1, &heap_phys_regions)

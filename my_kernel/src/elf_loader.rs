@@ -13,7 +13,7 @@ use crate::memory::page_table::PhysPage4KiB;
 use crate::memory::page_table::PML4;
 use crate::memory::stack::KERN_STACK_TOP;
 use crate::memory::stack::STACK_SIZE;
-use crate::print;
+
 use crate::println;
 
 const ELF_STAGING_AREA: usize = 0x0000_4000_0000_0000;
