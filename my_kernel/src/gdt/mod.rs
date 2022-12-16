@@ -36,13 +36,13 @@ impl GDT {
             tss_hi: tss_hi,
             end_seg: 0,
         };
-        gdt.size = (&gdt.end_seg as *const _ as usize - &gdt.null_seg as *const _ as usize) as u16;
+        gdt.size = (core::ptr::addr_of!(gdt.end_seg) as usize - core::ptr::addr_of!(gdt.null_seg) as usize) as u16;
         gdt
     }
 
     #[allow(unaligned_references)]
     pub fn load(&mut self) {
-        self.addr = &self.null_seg as *const _ as u64;
+        self.addr = core::ptr::addr_of!(self.null_seg) as u64;
 
         let ptr = self as *const _ as usize;
         if ptr % 0x8 != 0 {

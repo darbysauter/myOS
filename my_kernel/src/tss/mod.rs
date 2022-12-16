@@ -53,7 +53,7 @@ impl TSS {
 
     #[allow(unaligned_references)]
     pub fn create_gdt_entry(tss: &Box<TSS>) -> (u64, u64) {
-        let base: u64 = &tss.res0 as *const _ as usize as u64;
+        let base: u64 = core::ptr::addr_of!(tss.res0) as usize as u64;
         let limit: u64 = mem::size_of::<TSS>() as u64;
 
         // mask key: b -> base, l -> limit
