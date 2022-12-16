@@ -1,5 +1,3 @@
-
-
 use crate::ahci::HbaMem;
 use crate::alloc::vec::Vec;
 
@@ -68,7 +66,7 @@ pub fn phase2_init(
 
     let mut sata_ports = Vec::new();
     for i in abar.implemented_ports() {
-        if ahci::check_type(&abar.ports[i]) == ahci::AhciDevType::AHCI_DEV_SATA {
+        if ahci::check_type(&abar.ports[i]) == ahci::AhciDevType::AhciDevSata {
             sata_ports.push(i);
         }
     }

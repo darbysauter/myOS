@@ -17,7 +17,7 @@ file_size = os.path.getsize(kernname)
 sizebytes = struct.pack('<I', file_size)
 
 # /usr/local/opt/binutils/bin/readelf -h target/x86_64-my_os/debug/my_kernel
-out = subprocess.run(['readelf', '-h', kernname], stdout=subprocess.PIPE).stdout.decode('utf-8')
+out = subprocess.run(['/usr/local/opt/binutils/bin/readelf', '-h', kernname], stdout=subprocess.PIPE).stdout.decode('utf-8')
 epointString = out.split("\n")[10].split(":")[1].strip()
 entryPoint = literal_eval(epointString)
 entryPointBytes = struct.pack('<I', entryPoint)

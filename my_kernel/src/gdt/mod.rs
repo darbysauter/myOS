@@ -36,7 +36,8 @@ impl GDT {
             tss_hi: tss_hi,
             end_seg: 0,
         };
-        gdt.size = (core::ptr::addr_of!(gdt.end_seg) as usize - core::ptr::addr_of!(gdt.null_seg) as usize) as u16;
+        gdt.size = (core::ptr::addr_of!(gdt.end_seg) as usize
+            - core::ptr::addr_of!(gdt.null_seg) as usize) as u16;
         gdt
     }
 

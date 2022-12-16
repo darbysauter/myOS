@@ -8,8 +8,6 @@ use core::convert::TryInto;
 use core::mem;
 use core::slice;
 
-
-
 pub fn map_heap(heap_regions: &Vec<(&PhysPage4KiB, usize)>, pml4: &mut PML4) {
     let mut vpage = HEAP_START;
     for (start_page, num_pages) in heap_regions {

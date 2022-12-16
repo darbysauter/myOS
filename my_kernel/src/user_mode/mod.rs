@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use crate::apic::{
     disable_pic, enable_apic, get_apic_base, set_apic_base, set_apic_tpr, start_apic_timer,
 };
-use crate::cpu::{write_msr};
+use crate::cpu::write_msr;
 use crate::gdt::{USER_CODE_SEL, USER_DATA_SEL};
 use crate::interrupts::enable_hardware_interrupts;
 use crate::memory::heap::translate_usize_to_phys;
@@ -152,24 +152,24 @@ extern "sysv64" fn syscall_handler(
     ret
 }
 
-fn test_syscall(syscall: u64) -> u64 {
-    let mut ret: u64;
-    unsafe {
-        asm!(
-            "mov rax, {:r}",
-            "syscall",
-            "mov {:r}, rax",
-            in(reg) syscall,
-            out(reg) ret
-        );
-    }
-    ret
-}
+// fn test_syscall(syscall: u64) -> u64 {
+//     let mut ret: u64;
+//     unsafe {
+//         asm!(
+//             "mov rax, {:r}",
+//             "syscall",
+//             "mov {:r}, rax",
+//             in(reg) syscall,
+//             out(reg) ret
+//         );
+//     }
+//     ret
+// }
 
-fn execute_in_user() {
-    let mut ret_val = 0;
-    while ret_val == 0 {
-        ret_val = test_syscall(1234);
-    }
-    loop {}
-}
+// fn execute_in_user() {
+//     let mut ret_val = 0;
+//     while ret_val == 0 {
+//         ret_val = test_syscall(1234);
+//     }
+//     loop {}
+// }

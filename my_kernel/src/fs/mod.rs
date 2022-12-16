@@ -8,7 +8,6 @@ use alloc::{string::String, vec::Vec};
 use crate::ahci::{HbaPort, SECTOR_SIZE};
 use crate::memory::page_table::PhysPage4KiB;
 
-
 #[derive(Debug)]
 pub struct SimpleFS {
     files: Vec<SimpleFile>,

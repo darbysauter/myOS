@@ -265,10 +265,10 @@ impl Default for HbaPort {
     }
 }
 
-const HBA_PxCMD_ST: u32 = 0x0001;
-const HBA_PxCMD_FRE: u32 = 0x0010;
-const HBA_PxCMD_FR: u32 = 0x4000;
-const HBA_PxCMD_CR: u32 = 0x8000;
+const HBA_PX_CMD_ST: u32 = 0x0001;
+const HBA_PX_CMD_FRE: u32 = 0x0010;
+const HBA_PX_CMD_FR: u32 = 0x4000;
+const HBA_PX_CMD_CR: u32 = 0x8000;
 
 const ATA_DEV_BUSY: u32 = 0x80;
 const ATA_DEV_DRQ: u32 = 0x08;
@@ -278,7 +278,7 @@ const ATA_CMD_READ_DMA_EX: u8 = 0x25;
 const ATA_CMD_WRITE_DMA: u8 = 0xCA;
 const ATA_CMD_WRITE_DMA_EX: u8 = 0x35;
 
-const HBA_PxIS_TFES: u32 = 1 << 30; // TFES - Task File Error Status
+const HBA_PX_IS_TFES: u32 = 1 << 30; // TFES - Task File Error Status
 
 pub const SECTOR_SIZE: usize = 512;
 
@@ -320,26 +320,26 @@ impl HbaPort {
     // Start command engine
     fn start_cmd(&mut self) {
         // Wait until CR (bit15) is cleared
-        while self.cmd & HBA_PxCMD_CR != 0 {}
+        while self.cmd & HBA_PX_CMD_CR != 0 {}
         // Set FRE (bit4) and ST (bit0)
-        self.cmd |= HBA_PxCMD_FRE;
-        self.cmd |= HBA_PxCMD_ST;
+        self.cmd |= HBA_PX_CMD_FRE;
+        self.cmd |= HBA_PX_CMD_ST;
     }
 
     // Stop command engine
     fn stop_cmd(&mut self) {
         // Clear ST (bit0)
-        self.cmd &= !HBA_PxCMD_ST;
+        self.cmd &= !HBA_PX_CMD_ST;
 
         // Clear FRE (bit4)
-        self.cmd &= !HBA_PxCMD_FRE;
+        self.cmd &= !HBA_PX_CMD_FRE;
 
         // Wait until FR (bit14), CR (bit15) are cleared
         loop {
-            if self.cmd & HBA_PxCMD_FR != 0 {
+            if self.cmd & HBA_PX_CMD_FR != 0 {
                 continue;
             }
-            if self.cmd & HBA_PxCMD_CR != 0 {
+            if self.cmd & HBA_PX_CMD_CR != 0 {
                 continue;
             }
             break;
@@ -441,7 +441,7 @@ impl HbaPort {
             if (self.ci & (1 << slot)) == 0 {
                 break;
             }
-            if (self.is & HBA_PxIS_TFES) != 0
+            if (self.is & HBA_PX_IS_TFES) != 0
             // Task file error
             {
                 panic!("Read disk error\n");
@@ -449,7 +449,7 @@ impl HbaPort {
         }
 
         // Check again
-        if self.is & HBA_PxIS_TFES != 0 {
+        if self.is & HBA_PX_IS_TFES != 0 {
             panic!("Read disk error\n");
         }
 
@@ -652,11 +652,11 @@ impl HbaPrdtEntry {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AhciDevType {
-    AHCI_DEV_NULL,
-    AHCI_DEV_SATA,
-    AHCI_DEV_SEMB,
-    AHCI_DEV_PM,
-    AHCI_DEV_SATAPI,
+    AhciDevNull,
+    AhciDevSata,
+    AhciDevSemb,
+    AhciDevPm,
+    AhciDevSatapi,
 }
 
 const HBA_PORT_IPM_ACTIVE: u8 = 1;
@@ -675,16 +675,16 @@ pub fn check_type(port: &HbaPort) -> AhciDevType {
 
     if det != HBA_PORT_DET_PRESENT {
         // Check drive status
-        return AhciDevType::AHCI_DEV_NULL;
+        return AhciDevType::AhciDevNull;
     }
     if ipm != HBA_PORT_IPM_ACTIVE {
-        return AhciDevType::AHCI_DEV_NULL;
+        return AhciDevType::AhciDevNull;
     }
 
     match port.sig {
-        SATA_SIG_ATAPI => return AhciDevType::AHCI_DEV_SATAPI,
-        SATA_SIG_SEMB => return AhciDevType::AHCI_DEV_SEMB,
-        SATA_SIG_PM => return AhciDevType::AHCI_DEV_PM,
-        _ => return AhciDevType::AHCI_DEV_SATA,
+        SATA_SIG_ATAPI => return AhciDevType::AhciDevSatapi,
+        SATA_SIG_SEMB => return AhciDevType::AhciDevSemb,
+        SATA_SIG_PM => return AhciDevType::AhciDevPm,
+        _ => return AhciDevType::AhciDevSata,
     }
 }
