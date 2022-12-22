@@ -104,7 +104,7 @@ kern_load_init:
     ; kernel header is on lba 0x11
     ; kernel is on lba 0x12-(0x12+ecx-1)
     ; hardcoded based off size of our bootloader
-    
+
     mov edi, 0x4000000 ; where entire kernel will be copied
     mov [boot_info_elf], edi
     ; https://wiki.osdev.org/Memory_Map_(x86)
@@ -227,7 +227,7 @@ protected_mode_reentry:
     ; VGA text buff
     mov esi, prot_msg
     call my_vga_print
-    
+
 check_cpu_properties:
     call check_cpuid
 
@@ -395,9 +395,9 @@ long_mode_entry:
     cmp eax, 0x464c457f ; check that first byte is same as what we expect for
                  ; kernel
                  ;; HERE 123
-    
+
     je no_err
-    
+
     hlt
     hlt
 
@@ -416,9 +416,17 @@ mem_map_iter:
     mov rdx, qword [rax] ; base address
     add rax, 8
     mov rdi, qword [rax] ; length
-    add rax, 16
 
-    add rdx, rdi
+    add rdx, rdi ; end of region
+
+    add rax, 8
+    mov edi, dword [rax] ; type
+    add rax, 8
+
+    cmp edi, 1  ; check if type is 1, this is a bad workaround because qemu update now adds a huge restricted
+                ; region, and mapping such a big region will mean our pagetable gets too big and goes into restricted area
+    jne not_greater ; skip if type is not 1
+
     cmp rdx, rsi
 
     jle not_greater
@@ -452,7 +460,7 @@ next_pdpt:
     ; PDPT
     mov [0xa000 + rdx * 8], rax ; PDPT[rdx] -> PD
     and al, 0xfc ;; clear bits 1 and 2
-    
+
     mov rcx, 0
 map_pd:
     mov [rax + rcx * 8], rdi ; PD[rcx] -> rax
@@ -520,7 +528,7 @@ next_pdpt_kern:
     ; PDPT
     mov [0x35000 + rdx * 8], rax ; PDPT[rdx] -> PD
     and al, 0xfc ;; clear bits 1 and 2
-    
+
     mov rcx, 0
 map_pd_kern:
     mov [rax + rcx * 8], rdi ; PD[rcx] -> rax
@@ -549,7 +557,7 @@ load_elf: ; elf needs to be properly loaded in memory
     mov ebx, 0x4000000
     mov eax, [ebx]
     cmp eax, 0x464c457f ; check that first byte is same as what we expect for
-    
+
     jne error_64
 
     ; phdr table
@@ -558,7 +566,7 @@ load_elf: ; elf needs to be properly loaded in memory
     movzx rsi, byte [rbx + 0x38] ; phnum
     mov rbx, 0x4000000
     add rbx, rax ; address of phdr table
-    
+
     mov rcx, 0
 load_segment:
     cmp rcx, rsi
@@ -579,7 +587,7 @@ pt_load_seg:
     and rax, 0xfffffffffffff000 ; round down to nearest 0x1000
     sub rdx, rax ; get difference between where we will start copying
                  ; and where segment lays
-    
+
     mov rdi, [rbx + 0x20] ; file size
     mov rsi, [rbx + 0x28] ; mem size
 
@@ -610,7 +618,7 @@ copy_elf_byte_loop:
     mov bl, 0
     cmp rdi, 0 ; check if byte should be 0
     je copy_elf_byte
-    
+
     ; otherwise grab byte from source
     sub rdi, 1 ; decrement bytes to grab
     mov bl, [rax]
@@ -650,7 +658,7 @@ handle_relocations: ; do relocations after other segments copied
     movzx rsi, byte [rbx + 0x38] ; phnum
     mov rbx, 0x4000000
     add rbx, rax ; address of phdr table
-    
+
     mov rcx, 0
 load_segment_relocation:
     cmp rcx, rsi
@@ -662,7 +670,7 @@ load_segment_relocation:
     mov edx, [rbx] ; type
     cmp rdx, 2 ; check if PT_DYNAMIC
     jne go_next_ent_relocations
-    
+
     mov rdx, [rbx + 8] ; offset in file
     add rdx, 0x4000000 ; offset in file but where we have it loaded
 
@@ -704,7 +712,7 @@ init_bss:
 
     mov rax, [rax]
     mov rcx, [rcx]
-    
+
     mov bl, 0
 zero_bss_loop:
     cmp rcx, 0 ; check if we need to copy any bytes
@@ -745,7 +753,7 @@ error_64:
     hlt
     mov rax, 0xdeadbeef
 
-    
+
 [bits 16]
 
 %include "e820mem.asm"
@@ -859,5 +867,5 @@ gdt_64_pointer:
 
 CODE_SEG_64 equ gdt_code_64 - gdt_64
 DATA_SEG_64 equ gdt_data_64 - gdt_64
- 
+
 times 8192-($-$$) db 0 ; pad file out with 0s 16 * sector size

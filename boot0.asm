@@ -95,5 +95,5 @@ suc_msg db 'SUCCESS: Loaded boot1 at 0x1000', 13, 10, 0 ; \r\n\0
 
 times 510-($-$$) db 0 ; pad file out with 0s to be proper sector size
 dw 0xaa55
-    
+
 
