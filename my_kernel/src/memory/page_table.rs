@@ -2,6 +2,7 @@ use alloc::alloc::{Global, Layout};
 use core::alloc::Allocator;
 
 use crate::memory::heap::{translate_mut_ref_to_phys, translate_ref_to_virt, HEAP_START};
+use crate::println;
 
 use alloc::vec::Vec;
 use core::arch::asm;
@@ -71,6 +72,7 @@ impl PML4 {
         user_accessable: bool,
         heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>,
     ) {
+        println!("map");
         if paddr % 0x1000 != 0 {
             panic!("paddr not aligned");
         }
@@ -146,6 +148,7 @@ impl PML4 {
         vaddr: &VirtPage4KiB,
         heap_regions: Option<&Vec<(&PhysPage4KiB, usize)>>,
     ) -> &'static PhysPage4KiB {
+        println!("unmap");
         let vaddr = vaddr as *const VirtPage4KiB as usize;
         if vaddr % 0x1000 != 0 {
             panic!("vaddr not aligned");

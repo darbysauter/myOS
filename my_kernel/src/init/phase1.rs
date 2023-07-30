@@ -38,10 +38,11 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
         if check_apic() {
             println!("APIC AVALIBLE");
         } else {
-            println!("APIC NOT AVALIBLE");
+            panic!("APIC NOT AVALIBLE");
         }
 
         let apic_base = get_apic_base();
+        println!("APIC base: {:#x}", apic_base);
 
         ident_map_apic_page(apic_base, pml4);
 

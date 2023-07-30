@@ -5,7 +5,7 @@ pub fn get_cpuid_feature_rdx(bit: u16) -> bool {
     unsafe {
         asm!( "mov rax, 0; cpuid; mov {}, rdx", out(reg) features);
     }
-    features & (1 << bit) != 0
+    features & (1_u64 << bit) != 0
 }
 
 const MSR_FEATURE_BIT: u16 = 5;

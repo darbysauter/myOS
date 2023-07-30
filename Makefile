@@ -1,7 +1,7 @@
 NASM = nasm
 
 bin=build/bin
-kern_bin=my_kernel/target/x86_64-my_os/debug
+kern_bin=my_kernel/target/x86_64-my_os/release
 disk_img=fs.img
 programs_dir=build/user_programs
 

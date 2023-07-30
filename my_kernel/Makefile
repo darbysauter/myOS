@@ -1,6 +1,6 @@
 build_kernel:
 	cargo fmt
-	cargo build
+	cargo build --release
 
 .PHONY : clean
 
