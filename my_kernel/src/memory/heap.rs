@@ -30,7 +30,7 @@ pub fn init_heap_phase1(
             let new_page = new_page as *const PhysPage4KiB as usize;
             if last_page != 0 && last_page + 0x1000 != new_page {
                 unsafe {
-                    frame_alloc.deallocate(&*(new_page as *const PhysPage4KiB));
+                    frame_alloc.deallocate(&mut *(new_page as *mut PhysPage4KiB));
                     ALLOCATOR.lock().init(first_page, pages * 0x1000);
                     println!(
                         "Partially initialized heap with size {} KiB",

@@ -406,7 +406,8 @@ impl HbaPort {
 
         // Setup command
         // FIS_REG_H2D *cmdfis = &cmdtbl.cfis;
-        let cmdfis = unsafe { &mut *(&cmdtbl.cfis as *const _ as usize as *mut FisRegH2d) };
+        let test: usize = &cmdtbl.cfis as *const _ as usize;
+        let cmdfis = unsafe { &mut *(test as *mut FisRegH2d) };
 
         cmdfis.fis_type = FisType::FisTypeRegH2d as u8;
         cmdfis.pmult = 0b10000000; // Command

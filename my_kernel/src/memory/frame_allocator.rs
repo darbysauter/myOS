@@ -41,7 +41,7 @@ impl LinkedListFrameAllocator {
         None
     }
 
-    pub fn deallocate(&mut self, page: &PhysPage4KiB) {
+    pub fn deallocate(&mut self, page: &mut PhysPage4KiB) {
         if self.frame_count == 0 {
             self.frame_count = 1;
             unsafe {
@@ -122,31 +122,31 @@ impl LinkedListFrameAllocator {
         None
     }
 
-    pub fn deallocate_and_unmap(
-        &mut self,
-        pml4: &mut PML4,
-        page: &VirtPage4KiB,
-        heap_regions: &Vec<(&PhysPage4KiB, usize)>,
-    ) {
-        if self.frame_count == 0 {
-            self.frame_count = 1;
-            unsafe {
-                let ptr = page as *const VirtPage4KiB as usize as *mut usize;
-                *ptr = 0xdeadbeef;
-                let phys_page = pml4.unmap_frame_4k(page, Some(heap_regions));
-                self.next = phys_page as *const PhysPage4KiB as usize;
-            }
-        } else {
-            self.frame_count += 1;
-            unsafe {
-                let ptr = page as *const VirtPage4KiB as usize as *mut usize;
-                let ptr_next = self.next as *const VirtPage4KiB as usize;
-                *ptr = ptr_next;
-                let phys_page = pml4.unmap_frame_4k(page, Some(heap_regions));
-                self.next = phys_page as *const PhysPage4KiB as usize;
-            }
-        }
-    }
+    //     pub fn deallocate_and_unmap(
+    //         &mut self,
+    //         pml4: &mut PML4,
+    //         page: &VirtPage4KiB,
+    //         heap_regions: &Vec<(&PhysPage4KiB, usize)>,
+    //     ) {
+    //         if self.frame_count == 0 {
+    //             self.frame_count = 1;
+    //             unsafe {
+    //                 let ptr = page as *const VirtPage4KiB as usize as *mut usize;
+    //                 *ptr = 0xdeadbeef;
+    //                 let phys_page = pml4.unmap_frame_4k(page, Some(heap_regions));
+    //                 self.next = phys_page as *const PhysPage4KiB as usize;
+    //             }
+    //         } else {
+    //             self.frame_count += 1;
+    //             unsafe {
+    //                 let ptr = page as *const VirtPage4KiB as usize as *mut usize;
+    //                 let ptr_next = self.next as *const VirtPage4KiB as usize;
+    //                 *ptr = ptr_next;
+    //                 let phys_page = pml4.unmap_frame_4k(page, Some(heap_regions));
+    //                 self.next = phys_page as *const PhysPage4KiB as usize;
+    //             }
+    //         }
+    //     }
 }
 
 fn init_frames(boot_info: &BootInfo) -> (u64, usize) {
