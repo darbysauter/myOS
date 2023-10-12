@@ -111,6 +111,6 @@ pub fn phase2_init(
     // enable_hardware_interrupts();
     // start_apic_timer(apic_base);
 
-    println!("We didn't die! :)");
-    loop {}
+    // println!("We didn't die! :)");
+    // loop {}
 }

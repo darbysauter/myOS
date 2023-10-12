@@ -273,9 +273,12 @@ const HBA_PX_CMD_CR: u32 = 0x8000;
 const ATA_DEV_BUSY: u32 = 0x80;
 const ATA_DEV_DRQ: u32 = 0x08;
 
+#[allow(dead_code)]
 const ATA_CMD_READ_DMA: u8 = 0xC8;
 const ATA_CMD_READ_DMA_EX: u8 = 0x25;
+#[allow(dead_code)]
 const ATA_CMD_WRITE_DMA: u8 = 0xCA;
+#[allow(dead_code)]
 const ATA_CMD_WRITE_DMA_EX: u8 = 0x35;
 
 const HBA_PX_IS_TFES: u32 = 1 << 30; // TFES - Task File Error Status
@@ -381,7 +384,7 @@ impl HbaPort {
         cmdheader.w(0); // Read from device
         cmdheader.prdtl = (((count - 1) >> 4) + 1) as u16; // PRDT entries count
 
-        let mut cmdtbl = cmdheader.cmd_table(heap_regions);
+        let cmdtbl = cmdheader.cmd_table(heap_regions);
 
         cmdtbl.clear();
 
@@ -663,6 +666,7 @@ pub enum AhciDevType {
 const HBA_PORT_IPM_ACTIVE: u8 = 1;
 const HBA_PORT_DET_PRESENT: u8 = 3;
 
+#[allow(dead_code)]
 const SATA_SIG_ATA: u32 = 0x00000101; // SATA drive
 const SATA_SIG_ATAPI: u32 = 0xEB140101; // SATAPI drive
 const SATA_SIG_SEMB: u32 = 0xC33C0101; // Enclosure management bridge

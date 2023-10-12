@@ -22,7 +22,6 @@ pub const USER_DATA_SEL: u64 = 3 << 3 | 3;
 pub const TSS_SEL: u64 = 5;
 
 impl GDT {
-    #[allow(unaligned_references)]
     fn new(tss_hi: u64, tss_lo: u64) -> Self {
         let mut gdt = GDT {
             size: 0,
@@ -41,7 +40,6 @@ impl GDT {
         gdt
     }
 
-    #[allow(unaligned_references)]
     pub fn load(&mut self) {
         self.addr = core::ptr::addr_of!(self.null_seg) as u64;
 

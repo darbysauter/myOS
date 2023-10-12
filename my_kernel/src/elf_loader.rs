@@ -3,7 +3,6 @@ use alloc::vec::Vec;
 use core::mem;
 use core::slice;
 
-use crate::elf::DynAddrEntry;
 use crate::elf::ProgHeaderEntry;
 use crate::memory::frame_allocator::LinkedListFrameAllocator;
 use crate::memory::heap::HEAP_SIZE;
@@ -142,35 +141,6 @@ impl ElfLoader {
                 }
             }
         }
-    }
-
-    fn fix_relocatable_addrs(prog_headers: &Vec<ProgHeaderEntry>) {
-        for entry in prog_headers {
-            if entry.seg_type == 0x2 {
-                // PT_DYNAMIC
-                let dyn_table: &[DynAddrEntry] = {
-                    unsafe {
-                        let v_addr = entry.v_addr + ELF_STAGING_AREA;
-                        let addr = (*((v_addr + 0x28) as *const usize)) as *const DynAddrEntry;
-                        let tbl_size = *((v_addr + 0x38) as *const usize);
-                        let ent_size = *((v_addr + 0x48) as *const usize);
-                        let count = *((v_addr + 0x58) as *const usize);
-                        assert_eq!(ent_size * count, tbl_size);
-                        assert_eq!(ent_size, mem::size_of::<DynAddrEntry>());
-                        slice::from_raw_parts(addr, tbl_size / mem::size_of::<DynAddrEntry>())
-                    }
-                };
-
-                for dyn_addr_entry in dyn_table {
-                    let addr = (dyn_addr_entry.addr + ELF_STAGING_AREA) as *mut usize;
-                    unsafe {
-                        *addr += USER_PROG_AREA as usize;
-                    }
-                }
-                return;
-            }
-        }
-        panic!("Could not find Relocatable Table");
     }
 
     pub fn map_kernel_stack(
