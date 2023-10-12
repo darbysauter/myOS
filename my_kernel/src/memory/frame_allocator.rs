@@ -16,7 +16,7 @@ pub struct LinkedListFrameAllocator {
 }
 
 impl LinkedListFrameAllocator {
-    pub unsafe fn init(boot_info: &BootInfo) -> Self {
+    pub fn init(boot_info: &BootInfo) -> Self {
         let (frame_count, first_page) = init_frames(boot_info);
         LinkedListFrameAllocator {
             frame_count,
@@ -398,13 +398,11 @@ fn check_page_table_overlap(page: u64) -> bool {
                                 }
 
                                 for pde in pd.entries.iter() {
-                                    if pde.present() {
-                                        if !pde.big_page_enabled() {
-                                            if let Some(pt) = pde.pt() {
-                                                // println!("PT at {:p}", pt);
-                                                if page == pt as *const PT as u64 {
-                                                    return true;
-                                                }
+                                    if pde.present() && !pde.big_page_enabled() {
+                                        if let Some(pt) = pde.pt() {
+                                            // println!("PT at {:p}", pt);
+                                            if page == pt as *const PT as u64 {
+                                                return true;
                                             }
                                         }
                                     }

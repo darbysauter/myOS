@@ -104,7 +104,8 @@ pub fn init_heap_phase2(
     }
 }
 
-// virt to phys
+/// # Safety
+/// This should only be called for when `object` is a reference to virtual mem and we want to translate it to physical
 pub unsafe fn translate_mut_ref_to_phys<'a, T>(
     heap_regions: &Vec<(&PhysPage4KiB, usize)>,
     object: &'a mut T,
@@ -129,7 +130,8 @@ pub unsafe fn translate_mut_ref_to_phys<'a, T>(
     panic!("Did not find region");
 }
 
-// virt to phys
+/// # Safety
+/// This should only be called for when `object` is a reference to virtual mem and we want to translate it to physical
 pub unsafe fn translate_ref_to_phys<'a, T>(
     heap_regions: &Vec<(&PhysPage4KiB, usize)>,
     object: &'a T,
@@ -154,7 +156,8 @@ pub unsafe fn translate_ref_to_phys<'a, T>(
     panic!("Did not find region");
 }
 
-// virt to phys
+/// # Safety
+/// This should only be called for when `object` is a reference to virtual mem and we want to translate it to physical
 pub unsafe fn translate_usize_to_phys(
     heap_regions: &Vec<(&PhysPage4KiB, usize)>,
     object: usize,
@@ -179,7 +182,8 @@ pub unsafe fn translate_usize_to_phys(
     panic!("Did not find region");
 }
 
-// phys to virt
+/// # Safety
+/// This should only be called for when `object` is a reference to physical mem and we want to translate it to virtual
 pub unsafe fn translate_ref_to_virt<'a, T>(
     heap_regions: &Vec<(&PhysPage4KiB, usize)>,
     object: &'a mut T,
@@ -204,6 +208,8 @@ pub unsafe fn translate_ref_to_virt<'a, T>(
     &mut (*(o as *mut T))
 }
 
+/// # Safety
+/// This should only be called for when `object` is a reference to physical mem and we want to translate it to virtual
 pub unsafe fn translate_usize_to_virt(
     heap_regions: &Vec<(&PhysPage4KiB, usize)>,
     object: usize,
@@ -228,7 +234,8 @@ pub unsafe fn translate_usize_to_virt(
     o
 }
 
-// phys to virt
+/// # Safety
+/// This should only be called for when Box is a reference to physical mem and we want to translate it to virtual
 pub unsafe fn translate_box<T>(
     heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
     object: Box<T>,
@@ -253,7 +260,8 @@ pub unsafe fn translate_box<T>(
     o as *mut T
 }
 
-// phys to virt
+/// # Safety
+/// This should only be called for when `vec` is a reference to physical mem and we want to translate it to virtual
 pub unsafe fn translate_box_vec<T>(
     heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
     vec: Vec<T>,

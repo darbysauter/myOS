@@ -323,6 +323,7 @@ impl HbaPort {
     // Start command engine
     fn start_cmd(&mut self) {
         // Wait until CR (bit15) is cleared
+        #[allow(clippy::while_immutable_condition)]
         while self.cmd & HBA_PX_CMD_CR != 0 {}
         // Set FRE (bit4) and ST (bit0)
         self.cmd |= HBA_PX_CMD_FRE;
@@ -372,11 +373,7 @@ impl HbaPort {
         let mut count = count;
         self.is = u32::MAX; // Clear pending interrupt bits
         let mut spin = 0; // Spin lock timeout counter
-        let slot = self.find_cmdslot();
-        if slot.is_none() {
-            return None;
-        }
-        let slot = slot.unwrap();
+        let slot = self.find_cmdslot()?;
 
         let cmdheader = self.cmd_header(slot, heap_regions);
         let size = (mem::size_of::<FisRegH2d>() / mem::size_of::<u32>()) as u8;
@@ -457,7 +454,7 @@ impl HbaPort {
             panic!("Read disk error\n");
         }
 
-        return Some(buf);
+        Some(buf)
     }
 
     // Find a free command list slot
@@ -470,7 +467,7 @@ impl HbaPort {
             }
             slots >>= 1;
         }
-        return None;
+        None
     }
 }
 
@@ -687,9 +684,9 @@ pub fn check_type(port: &HbaPort) -> AhciDevType {
     }
 
     match port.sig {
-        SATA_SIG_ATAPI => return AhciDevType::AhciDevSatapi,
-        SATA_SIG_SEMB => return AhciDevType::AhciDevSemb,
-        SATA_SIG_PM => return AhciDevType::AhciDevPm,
-        _ => return AhciDevType::AhciDevSata,
+        SATA_SIG_ATAPI => AhciDevType::AhciDevSatapi,
+        SATA_SIG_SEMB => AhciDevType::AhciDevSemb,
+        SATA_SIG_PM => AhciDevType::AhciDevPm,
+        _ => AhciDevType::AhciDevSata,
     }
 }

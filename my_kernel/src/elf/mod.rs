@@ -60,9 +60,7 @@ pub fn get_loadable_prog_header_entries(boot_info: &BootInfo) -> Vec<ProgHeaderE
             .expect("Couldn't get ent size [0]")
             .try_into()
             .expect("Couldn't get ent size [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent size [2]");
+    );
 
     assert_eq!(ph_ent_size as usize, mem::size_of::<ProgHeaderEntry>());
 
@@ -71,9 +69,7 @@ pub fn get_loadable_prog_header_entries(boot_info: &BootInfo) -> Vec<ProgHeaderE
             .expect("Couldn't get ent num [0]")
             .try_into()
             .expect("Couldn't get ent num [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent num [2]");
+    );
 
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
@@ -118,9 +114,7 @@ pub fn get_global_offset_table(boot_info: &BootInfo) -> &mut [usize] {
             .expect("Couldn't get ent size [0]")
             .try_into()
             .expect("Couldn't get ent size [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent size [2]");
+    );
 
     assert_eq!(sh_ent_size as usize, mem::size_of::<SecHeaderEntry>());
 
@@ -129,18 +123,14 @@ pub fn get_global_offset_table(boot_info: &BootInfo) -> &mut [usize] {
             .expect("Couldn't get ent num [0]")
             .try_into()
             .expect("Couldn't get ent num [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent num [2]");
+    );
 
     let sh_str_index: u16 = u16::from_le_bytes(
         e.get(0x3e..0x40)
             .expect("Couldn't get ent num [0]")
             .try_into()
             .expect("Couldn't get ent num [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent num [2]");
+    );
 
     let sec_headers = {
         let ptr = (boot_info.elf_location + sh_off) as *const SecHeaderEntry;
@@ -188,9 +178,7 @@ pub fn fix_relocatable_addrs(boot_info: &BootInfo, offset: usize) {
             .expect("Couldn't get ent size [0]")
             .try_into()
             .expect("Couldn't get ent size [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent size [2]");
+    );
 
     assert_eq!(ph_ent_size as usize, mem::size_of::<ProgHeaderEntry>());
 
@@ -199,9 +187,7 @@ pub fn fix_relocatable_addrs(boot_info: &BootInfo, offset: usize) {
             .expect("Couldn't get ent num [0]")
             .try_into()
             .expect("Couldn't get ent num [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent num [2]");
+    );
 
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
@@ -226,7 +212,7 @@ pub fn fix_relocatable_addrs(boot_info: &BootInfo, offset: usize) {
             for dyn_addr_entry in dyn_table {
                 let addr = dyn_addr_entry.addr as *mut usize;
                 unsafe {
-                    *addr += offset as usize;
+                    *addr += offset;
                 }
             }
             return;

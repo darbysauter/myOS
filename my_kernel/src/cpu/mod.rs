@@ -14,12 +14,16 @@ pub fn check_msr() -> bool {
     get_cpuid_feature_rdx(MSR_FEATURE_BIT)
 }
 
+/// # Safety
+/// `msr` must be a valid msr
 pub unsafe fn write_msr(msr: u32, value: u64) {
     let low = value as u32;
     let high = (value >> 32) as u32;
     asm!("wrmsr", in("ecx") msr, in("eax") low, in("edx") high);
 }
 
+/// # Safety
+/// `msr` must be a valid msr
 pub unsafe fn read_msr(msr: u32) -> u64 {
     let mut low: u32;
     let mut high: u32;

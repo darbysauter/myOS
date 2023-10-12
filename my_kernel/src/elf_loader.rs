@@ -35,7 +35,7 @@ impl ElfLoader {
 
         let prog_headers = ElfLoader::get_prog_header_entries(&file_data);
 
-        let user_pml4 = unsafe { PML4::new(Some(heap_regions)) };
+        let user_pml4 = PML4::new(Some(heap_regions));
 
         ElfLoader::map_elf_and_copy(
             &prog_headers,
@@ -65,7 +65,7 @@ impl ElfLoader {
         (user_pml4, entry)
     }
 
-    fn get_prog_header_entries(data: &Vec<u8>) -> Vec<ProgHeaderEntry> {
+    fn get_prog_header_entries(data: &[u8]) -> Vec<ProgHeaderEntry> {
         let ph_off = usize::from_le_bytes(
             data[0x20..0x28]
                 .try_into()
@@ -104,7 +104,7 @@ impl ElfLoader {
         kernel_pml4: &mut PML4,
         user_pml4: &mut PML4,
         heap_regions: &Vec<(&'static PhysPage4KiB, usize)>,
-        data: &Vec<u8>,
+        data: &[u8],
     ) {
         for entry in prog_headers {
             if entry.seg_type == 0x1 {

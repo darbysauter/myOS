@@ -18,7 +18,7 @@ use crate::println;
 use core::arch::asm;
 
 pub fn phase1_init(boot_info: &BootInfo) -> ! {
-    let mut frame_allocator = unsafe { LinkedListFrameAllocator::init(boot_info) };
+    let mut frame_allocator = LinkedListFrameAllocator::init(boot_info);
 
     let (heap_phys, num_pages_1) = init_heap_phase1(&mut frame_allocator);
     let mut heap_phys_regions = init_heap_phase2(&mut frame_allocator, num_pages_1);
@@ -74,22 +74,24 @@ pub fn phase1_init(boot_info: &BootInfo) -> ! {
         asm!(
             "mov cr3, {}; mov rsp, {}; push 0; jmp {}",
             in(reg) pml4_phys,
-            in(reg) KERN_STACK_TOP as usize,
+            in(reg) KERN_STACK_TOP,
             in(reg) phase_2_entry_point,
-            in("rdi") pml4_boxed as *mut PML4 as usize,
-            in("rsi") heap_regions_boxed as *mut Vec<(&PhysPage4KiB, usize)> as usize,
-            in("rdx") frame_alloc_boxed as *mut LinkedListFrameAllocator as usize,
-            in("rcx") prog_header_entries_boxed as *mut Vec<(&PhysPage4KiB, usize)> as usize,
-            in("r8") stack_phys as *const _ as usize
+            in("rdi") pml4_boxed,
+            in("rsi") heap_regions_boxed,
+            in("rdx") frame_alloc_boxed,
+            in("rcx") prog_header_entries_boxed,
+            in("r8") stack_phys
         );
     }
     loop {}
 }
 
-// Arguments are passed in order of:
-// RDI, RSI, RDX, RCX, R8, R9
+/// # Safety
+/// `heap_phys_regions`, `frame_alloc`, `prog_header_entries` and `stack_phys` must be valid pointers
+/// Arguments are passed in order of:
+/// RDI, RSI, RDX, RCX, R8, R9
 #[no_mangle]
-pub extern "sysv64" fn phase_2_transition(
+pub unsafe extern "sysv64" fn phase_2_transition(
     pml4: &mut PML4,
     heap_phys_regions: *mut Vec<(&'static PhysPage4KiB, usize)>,
     frame_alloc: *mut LinkedListFrameAllocator,
@@ -98,13 +100,13 @@ pub extern "sysv64" fn phase_2_transition(
 ) -> ! {
     println!("Entering Phase 2!");
 
-    let frame_alloc = unsafe { Box::from_raw(frame_alloc) };
+    let frame_alloc = Box::from_raw(frame_alloc);
     let frame_alloc = Box::into_inner(frame_alloc);
 
-    let heap_phys_regions = unsafe { Box::from_raw(heap_phys_regions) };
+    let heap_phys_regions = Box::from_raw(heap_phys_regions);
     let heap_phys_regions: Vec<(&'static PhysPage4KiB, usize)> = Box::into_inner(heap_phys_regions);
 
-    let prog_header_entries = unsafe { Box::from_raw(prog_header_entries) };
+    let prog_header_entries = Box::from_raw(prog_header_entries);
     let prog_header_entries: Vec<ProgHeaderEntry> = Box::into_inner(prog_header_entries);
 
     unmap_elf_at_original_mapping(&prog_header_entries, pml4, &heap_phys_regions);

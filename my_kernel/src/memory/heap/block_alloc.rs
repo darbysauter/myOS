@@ -106,11 +106,15 @@ impl BlockAllocator {
         self.fallback_allocator.get_regions()
     }
 
+    /// # Safety
+    /// `heap_start` must be a valid pointer to unused memory
     pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
         self.fallback_allocator.init(heap_start, heap_size);
         self.total_memory += heap_size as u64;
     }
 
+    /// # Safety
+    /// `heap_start` must be a valid pointer to unused memory
     pub unsafe fn extend(&mut self, heap_start: usize, heap_size: usize) {
         self.fallback_allocator.init(heap_start, heap_size);
         self.total_memory += heap_size as u64;

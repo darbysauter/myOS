@@ -105,7 +105,7 @@ impl IDTEntryOptions {
     }
 
     #[inline]
-    pub unsafe fn set_stack_index(&mut self, index: u16) -> &mut Self {
+    pub fn set_stack_index(&mut self, index: u16) -> &mut Self {
         let range = 0..3;
         let bitmask = !(!0 << (16 - range.end) >> (16 - range.end) >> range.start << range.start);
 

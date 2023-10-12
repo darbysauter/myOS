@@ -90,7 +90,7 @@ impl SimpleFS {
                     sectors += 1;
                 }
                 return Some(
-                    port.read(startl, starth, sectors, &heap_phys_regions)
+                    port.read(startl, starth, sectors, heap_phys_regions)
                         .expect("read failed"),
                 );
             }

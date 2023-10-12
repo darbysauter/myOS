@@ -24,9 +24,7 @@ pub struct PML4 {
 }
 
 impl PML4 {
-    pub unsafe fn new(
-        heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>,
-    ) -> &'static mut Self {
+    pub fn new(heap_regions: Option<&Vec<(&'static PhysPage4KiB, usize)>>) -> &'static mut Self {
         // TODO: Why did i do static ref???
         let ptr = Global.allocate_zeroed(Layout::new::<PML4>());
 
@@ -34,17 +32,17 @@ impl PML4 {
             panic!("Alloc Error");
         }
 
-        let pml4 = &mut *(ptr.unwrap().as_mut_ptr() as *mut PML4);
-        let mut pml4_recur = &mut *(ptr.unwrap().as_mut_ptr() as *mut PDPT);
+        let pml4 = unsafe { &mut *(ptr.unwrap().as_mut_ptr() as *mut PML4) };
+        let mut pml4_recur = unsafe { &mut *(ptr.unwrap().as_mut_ptr() as *mut PDPT) };
         if let Some(heap_regions) = heap_regions {
-            pml4_recur = translate_mut_ref_to_phys(heap_regions, pml4_recur);
+            pml4_recur = unsafe { translate_mut_ref_to_phys(heap_regions, pml4_recur) };
         }
         pml4.add(RECUR_INDEX, pml4_recur, true, true);
 
         pml4
     }
 
-    pub unsafe fn add(&mut self, index: usize, pdpt: &PDPT, writable: bool, user_accessable: bool) {
+    pub fn add(&mut self, index: usize, pdpt: &PDPT, writable: bool, user_accessable: bool) {
         let phys_ptr = pdpt as *const PDPT as usize;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
             panic!("PDPT not aligned");
@@ -64,6 +62,9 @@ impl PML4 {
         self.entries[index].data = data as u64;
     }
 
+    /// # Safety
+    /// `paddr` must be a valid pointer
+    /// `vaddr` must be ann unused slot in the PML4
     pub unsafe fn map_frame_4k(
         &mut self,
         paddr: usize,
@@ -143,7 +144,7 @@ impl PML4 {
         }
     }
 
-    pub unsafe fn unmap_frame_4k(
+    pub fn unmap_frame_4k(
         &mut self,
         vaddr: &VirtPage4KiB,
         heap_regions: Option<&Vec<(&PhysPage4KiB, usize)>>,
@@ -158,7 +159,7 @@ impl PML4 {
         let pml4e = &mut self.entries[pml4_ind];
         let pdpt = if let Some(phys_pdpt) = pml4e.pdpt() {
             if let Some(heap_regions) = heap_regions {
-                translate_ref_to_virt(heap_regions, phys_pdpt)
+                unsafe { translate_ref_to_virt(heap_regions, phys_pdpt) }
             } else {
                 phys_pdpt
             }
@@ -169,7 +170,7 @@ impl PML4 {
 
         let pd = if let Some(phys_pd) = pdpte.pd() {
             if let Some(heap_regions) = heap_regions {
-                translate_ref_to_virt(heap_regions, phys_pd)
+                unsafe { translate_ref_to_virt(heap_regions, phys_pd) }
             } else {
                 phys_pd
             }
@@ -180,7 +181,7 @@ impl PML4 {
 
         let pt = if let Some(phys_pt) = pde.pt() {
             if let Some(heap_regions) = heap_regions {
-                translate_ref_to_virt(heap_regions, phys_pt)
+                unsafe { translate_ref_to_virt(heap_regions, phys_pt) }
             } else {
                 phys_pt
             }
@@ -200,40 +201,46 @@ impl PML4 {
         // check if we should remove a pt
         for pte in pt.entries.iter() {
             if pte.present() {
-                return &(*(frame as *const PhysPage4KiB));
+                return unsafe { &(*(frame as *const PhysPage4KiB)) };
             }
         }
 
         pde.clear();
         if let Some(ptr) = NonNull::new(pt as *mut PT as usize as *mut u8) {
-            Global.deallocate(ptr, Layout::new::<PT>());
+            unsafe {
+                Global.deallocate(ptr, Layout::new::<PT>());
+            }
         }
 
         // check if we shoould remove a pd
         for pde in pd.entries.iter() {
             if pde.present() {
-                return &(*(frame as *const PhysPage4KiB));
+                return unsafe { &(*(frame as *const PhysPage4KiB)) };
             }
         }
 
         pdpte.clear();
         if let Some(ptr) = NonNull::new(pd as *mut PD as usize as *mut u8) {
-            Global.deallocate(ptr, Layout::new::<PD>());
+            unsafe {
+                Global.deallocate(ptr, Layout::new::<PD>());
+            }
         }
 
         // check if we shoould remove a pdpt
         for pdpte in pdpt.entries.iter() {
             if pdpte.present() {
-                return &(*(frame as *const PhysPage4KiB));
+                return unsafe { &(*(frame as *const PhysPage4KiB)) };
             }
         }
 
         pml4e.clear();
         if let Some(ptr) = NonNull::new(pdpt as *mut PDPT as usize as *mut u8) {
-            Global.deallocate(ptr, Layout::new::<PDPT>());
+            unsafe {
+                Global.deallocate(ptr, Layout::new::<PDPT>());
+            }
         }
 
-        &(*(frame as *const PhysPage4KiB))
+        unsafe { &(*(frame as *const PhysPage4KiB)) }
     }
 
     pub fn get_pdpt_recursive(
@@ -358,17 +365,17 @@ pub struct PDPT {
 }
 
 impl PDPT {
-    pub unsafe fn new() -> &'static mut Self {
+    pub fn new() -> &'static mut Self {
         let ptr = Global.allocate_zeroed(Layout::new::<PDPT>());
 
         if ptr.is_err() {
             panic!("Alloc Error");
         }
 
-        &mut *(ptr.unwrap().as_mut_ptr() as *mut PDPT)
+        unsafe { &mut *(ptr.unwrap().as_mut_ptr() as *mut PDPT) }
     }
 
-    pub unsafe fn add(&mut self, index: usize, pd: &PD, writable: bool, user_accessable: bool) {
+    pub fn add(&mut self, index: usize, pd: &PD, writable: bool, user_accessable: bool) {
         let phys_ptr = pd as *const PD as usize;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
             panic!("PD not aligned");
@@ -444,17 +451,17 @@ pub struct PD {
 }
 
 impl PD {
-    pub unsafe fn new() -> &'static mut Self {
+    pub fn new() -> &'static mut Self {
         let ptr = Global.allocate_zeroed(Layout::new::<PD>());
 
         if ptr.is_err() {
             panic!("Alloc Error");
         }
 
-        &mut *(ptr.unwrap().as_mut_ptr() as *mut PD)
+        unsafe { &mut *(ptr.unwrap().as_mut_ptr() as *mut PD) }
     }
 
-    pub unsafe fn add(&mut self, index: usize, pt: &PT, writable: bool, user_accessable: bool) {
+    pub fn add(&mut self, index: usize, pt: &PT, writable: bool, user_accessable: bool) {
         let phys_ptr = pt as *const PT as usize;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
             panic!("PT not aligned");
@@ -566,7 +573,7 @@ pub struct PT {
 }
 
 impl PT {
-    pub unsafe fn new() -> &'static mut Self {
+    pub fn new() -> &'static mut Self {
         let ptr = Global.allocate_zeroed(Layout::new::<PT>());
 
         if ptr.is_err() {
@@ -577,9 +584,11 @@ impl PT {
             }
         }
 
-        &mut *(ptr.unwrap().as_mut_ptr() as *mut PT)
+        unsafe { &mut *(ptr.unwrap().as_mut_ptr() as *mut PT) }
     }
 
+    /// # Safety
+    /// `page` must be a valid physical page that is not currently in use
     pub unsafe fn add(&mut self, index: usize, page: usize, writable: bool, user_accessable: bool) {
         let phys_ptr = page;
         if phys_ptr % 0x1000 != 0 || phys_ptr & 0xfff0000000000000 != 0 {
@@ -667,12 +676,13 @@ impl PTE {
     }
 }
 
-// unsafe as this reference is treated as static, but this is not fully true
-// Should not be held for long
-// This will lead to undefined behaviour when:
-// current_page_table() called then cr3 is changed then this ref is used
-// Possibly create another function that can be used with PML4's that have
-// been created on the heap
+/// # Safety
+/// unsafe as this reference is treated as static, but this is not fully true
+/// Should not be held for long
+/// This will lead to undefined behaviour when:
+/// current_page_table() called then cr3 is changed then this ref is used
+/// Possibly create another function that can be used with PML4's that have
+/// been created on the heap
 pub unsafe fn current_page_table() -> &'static PML4 {
     let mut cr3: usize;
     asm!("mov {}, cr3", out(reg) cr3);

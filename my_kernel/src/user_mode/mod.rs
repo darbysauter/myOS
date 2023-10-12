@@ -135,8 +135,8 @@ extern "sysv64" fn syscall_handler(
         Syscall::EnableTimer => {
             println!("Enabling timer");
             let apic_base = get_apic_base();
-            set_apic_base(apic_base);
             unsafe {
+                set_apic_base(apic_base);
                 enable_apic(apic_base);
                 set_apic_tpr(apic_base, 0);
             }
@@ -144,7 +144,9 @@ extern "sysv64" fn syscall_handler(
             println!("Enabling hwi");
             enable_hardware_interrupts();
             println!("starting timer");
-            start_apic_timer(apic_base);
+            unsafe {
+                start_apic_timer(apic_base);
+            }
         }
     }
 

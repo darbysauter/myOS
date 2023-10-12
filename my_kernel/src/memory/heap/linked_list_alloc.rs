@@ -39,6 +39,8 @@ impl LinkedListAllocator {
         }
     }
 
+    /// # Safety
+    /// `heap_start` must be a valid pointer
     pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
         self.add_free_region(heap_start, heap_size);
     }
@@ -126,7 +128,7 @@ impl LinkedListAllocator {
         (size, layout.align())
     }
 
-    pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
+    pub fn alloc(&mut self, layout: Layout) -> *mut u8 {
         let (size, align) = LinkedListAllocator::size_align(layout);
 
         if let Some((region, alloc_start, excess)) = self.find_region(size, align) {
@@ -135,10 +137,14 @@ impl LinkedListAllocator {
             // println!("increased [LL]: {:#x} cur: {:#x}", alloc_end - alloc_start, self.used_memory);
             self.used_memory += alloc_end as u64 - alloc_start as u64;
             if excess_size > 0 {
-                self.add_free_region(alloc_end, excess_size);
+                unsafe {
+                    self.add_free_region(alloc_end, excess_size);
+                }
             }
             if let Some((start, size)) = excess {
-                self.add_free_region(start, size);
+                unsafe {
+                    self.add_free_region(start, size);
+                }
             }
             alloc_start as *mut u8
         } else {
@@ -146,6 +152,8 @@ impl LinkedListAllocator {
         }
     }
 
+    /// # Safety
+    /// This assumes `ptr` is a pointer to previously allocated memory
     pub unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
         let (size, _) = LinkedListAllocator::size_align(layout);
 
