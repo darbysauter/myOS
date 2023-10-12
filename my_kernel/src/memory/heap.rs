@@ -54,7 +54,7 @@ pub fn init_heap_phase1(
             "Fully initialized heap with size {} KiB",
             (pages * 0x1000) / 1024
         );
-        return (&*(first_page as *const PhysPage4KiB), pages);
+        (&*(first_page as *const PhysPage4KiB), pages)
     }
 }
 
@@ -100,7 +100,7 @@ pub fn init_heap_phase2(
         ALLOCATOR.lock().extend(first_page, increase_size);
         phys_regions.push((&*(first_page as *const PhysPage4KiB), pages));
         println!("Extended heap with size {} KiB", (pages * 0x1000) / 1024);
-        return phys_regions;
+        phys_regions
     }
 }
 
@@ -201,8 +201,7 @@ pub unsafe fn translate_ref_to_virt<'a, T>(
     o = HEAP_START + offset + (o & 0xfff);
 
     // println!("new addr: {:#x}", o);
-    let virt_ref = &mut (*(o as *mut T));
-    virt_ref
+    &mut (*(o as *mut T))
 }
 
 pub unsafe fn translate_usize_to_virt(

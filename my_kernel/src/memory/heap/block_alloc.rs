@@ -49,12 +49,11 @@ impl BlockAllocator {
         let total_used_bytes = self.fallback_allocator.used_memory;
         let total_free_bytes = self.total_memory - total_used_bytes;
         if free_bytes != total_free_bytes {
-            let dif: u64;
-            if total_free_bytes > free_bytes {
-                dif = total_free_bytes - free_bytes;
+            let dif = if total_free_bytes > free_bytes {
+                total_free_bytes - free_bytes
             } else {
-                dif = free_bytes - total_free_bytes;
-            }
+                free_bytes - total_free_bytes
+            };
             println!(
                 "tracked free bytes: {:#x} free according to allocators: {:#x} dif: {:#x}",
                 total_free_bytes, free_bytes, dif
@@ -66,9 +65,8 @@ impl BlockAllocator {
     }
 
     pub fn print_block_regions(&mut self) -> u64 {
-        let mut idx = 0;
         let mut total_bytes = 0;
-        for list in self.list_heads.iter() {
+        for (idx, list) in self.list_heads.iter().enumerate() {
             let mut list = list;
             let mut num = 0;
             while let Some(l) = list {
@@ -81,15 +79,13 @@ impl BlockAllocator {
             if bytes != 0 {
                 println!("region size: {:#} bytes: {:#x}", BLOCK_SIZES[idx], bytes);
             }
-            idx += 1;
         }
         total_bytes as u64
     }
 
     pub fn get_block_regions(&mut self) -> u64 {
-        let mut idx = 0;
         let mut total_bytes = 0;
-        for list in self.list_heads.iter() {
+        for (idx, list) in self.list_heads.iter().enumerate() {
             let mut list = list;
             let mut num = 0;
             while let Some(l) = list {
@@ -98,7 +94,6 @@ impl BlockAllocator {
             }
             let bytes = num * BLOCK_SIZES[idx];
             total_bytes += bytes;
-            idx += 1;
         }
         total_bytes as u64
     }

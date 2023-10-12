@@ -45,9 +45,7 @@ pub fn map_elf_at_current_mapping(boot_info: &BootInfo, pml4: &mut PML4) {
             .expect("Couldn't get ent size [0]")
             .try_into()
             .expect("Couldn't get ent size [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent size [2]");
+    );
 
     assert_eq!(ph_ent_size as usize, mem::size_of::<ProgHeaderEntry>());
 
@@ -56,9 +54,7 @@ pub fn map_elf_at_current_mapping(boot_info: &BootInfo, pml4: &mut PML4) {
             .expect("Couldn't get ent num [0]")
             .try_into()
             .expect("Couldn't get ent num [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent num [2]");
+    );
 
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
@@ -149,9 +145,7 @@ pub fn map_elf_at_new_base(boot_info: &BootInfo, pml4: &mut PML4) {
             .expect("Couldn't get ent size [0]")
             .try_into()
             .expect("Couldn't get ent size [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent size [2]");
+    );
 
     assert_eq!(ph_ent_size as usize, mem::size_of::<ProgHeaderEntry>());
 
@@ -160,9 +154,7 @@ pub fn map_elf_at_new_base(boot_info: &BootInfo, pml4: &mut PML4) {
             .expect("Couldn't get ent num [0]")
             .try_into()
             .expect("Couldn't get ent num [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent num [2]");
+    );
 
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;

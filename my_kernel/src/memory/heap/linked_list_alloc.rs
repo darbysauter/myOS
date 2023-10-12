@@ -60,7 +60,7 @@ impl LinkedListAllocator {
     ) -> Option<(&'static mut ListNode, usize, Option<(usize, usize)>)> {
         let mut current = &mut self.head;
         while let Some(ref mut region) = current.next {
-            if let Ok(alloc_start) = Self::alloc_from_region(&region, size, align) {
+            if let Ok(alloc_start) = Self::alloc_from_region(region, size, align) {
                 let next = region.next.take();
                 let mut beginning_excess: Option<(usize, usize)> = None;
                 if region.start_addr() < alloc_start {

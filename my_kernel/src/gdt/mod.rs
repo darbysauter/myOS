@@ -31,8 +31,8 @@ impl GDT {
             kern_data_seg: 0x0000920000000000,
             user_data_seg: 0x0000F20000000000,
             user_code_seg: 0x0020FA0000000000,
-            tss_lo: tss_lo,
-            tss_hi: tss_hi,
+            tss_lo,
+            tss_hi,
             end_seg: 0,
         };
         gdt.size = (core::ptr::addr_of!(gdt.end_seg) as usize

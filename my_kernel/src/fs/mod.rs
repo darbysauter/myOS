@@ -72,7 +72,7 @@ impl SimpleFS {
             })
         }
 
-        SimpleFS { files: files }
+        SimpleFS { files }
     }
 
     pub fn load_file(

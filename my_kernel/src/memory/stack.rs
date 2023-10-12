@@ -37,7 +37,7 @@ pub fn create_new_stack_and_map(
             panic!("Out of Pages");
         }
     }
-    unsafe { return &*(last_page as *const PhysPage4KiB) }
+    unsafe { &*(last_page as *const PhysPage4KiB) }
 }
 
 pub fn create_new_user_stack_and_map(
@@ -70,5 +70,5 @@ pub fn create_new_user_stack_and_map(
             panic!("Out of Pages");
         }
     }
-    unsafe { return &*(last_page as *const VirtPage4KiB) }
+    unsafe { &*(last_page as *const VirtPage4KiB) }
 }

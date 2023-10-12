@@ -166,7 +166,7 @@ fn init_frames(boot_info: &BootInfo) -> (u64, usize) {
     let gib = total_mem / 0x40000000;
     println!("total mem: {} GiB", gib);
 
-    get_elf_regions(boot_info, &mm)
+    get_elf_regions(boot_info, mm)
 }
 
 fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, usize) {
@@ -193,9 +193,7 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
             .expect("Couldn't get ent size [0]")
             .try_into()
             .expect("Couldn't get ent size [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent size [2]");
+    );
 
     assert_eq!(ph_ent_size as usize, mem::size_of::<ProgHeaderEntry>());
 
@@ -204,9 +202,7 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
             .expect("Couldn't get ent num [0]")
             .try_into()
             .expect("Couldn't get ent num [1]"),
-    )
-    .try_into()
-    .expect("Couldn't get ent num [2]");
+    );
 
     let prog_headers = {
         let ptr = (boot_info.elf_location + ph_off) as *const ProgHeaderEntry;
@@ -274,14 +270,13 @@ fn get_elf_regions(boot_info: &BootInfo, mem_map: &[E820MemoryRegion]) -> (u64, 
                     unusable_pages += 1;
                     continue;
                 }
-            } else if page_addr >= stack_end_page as u64 && page_addr <= stack_start_page as u64 {
+            } else if (page_addr >= stack_end_page as u64 && page_addr <= stack_start_page as u64)
+                || (page_addr >= pt_min
+                    && page_addr <= pt_max
+                    && check_page_table_overlap(page_addr))
+            {
                 unusable_pages += 1;
                 continue;
-            } else if page_addr >= pt_min && page_addr <= pt_max {
-                if check_page_table_overlap(page_addr) {
-                    unusable_pages += 1;
-                    continue;
-                }
             }
 
             usable_pages += 1;
@@ -354,17 +349,15 @@ fn get_page_table_min_max() -> (u64, u64) {
                                 }
 
                                 for pde in pd.entries.iter() {
-                                    if pde.present() {
-                                        if !pde.big_page_enabled() {
-                                            if let Some(pt) = pde.pt() {
-                                                // println!("PT at {:p}", pt);
-                                                let addr = pt as *const PT as u64 + 0x200;
-                                                if addr < min {
-                                                    min = addr;
-                                                }
-                                                if addr > max {
-                                                    max = addr;
-                                                }
+                                    if pde.present() && !pde.big_page_enabled() {
+                                        if let Some(pt) = pde.pt() {
+                                            // println!("PT at {:p}", pt);
+                                            let addr = pt as *const PT as u64 + 0x200;
+                                            if addr < min {
+                                                min = addr;
+                                            }
+                                            if addr > max {
+                                                max = addr;
                                             }
                                         }
                                     }
@@ -406,8 +399,7 @@ fn check_page_table_overlap(page: u64) -> bool {
 
                                 for pde in pd.entries.iter() {
                                     if pde.present() {
-                                        if pde.big_page_enabled() {
-                                        } else {
+                                        if !pde.big_page_enabled() {
                                             if let Some(pt) = pde.pt() {
                                                 // println!("PT at {:p}", pt);
                                                 if page == pt as *const PT as u64 {

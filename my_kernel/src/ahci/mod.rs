@@ -13,14 +13,14 @@ use crate::memory::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 enum FisType {
-    FisTypeRegH2d = 0x27,   // Register FIS - host to device
-    FisTypeRegD2h = 0x34,   // Register FIS - device to host
-    FisTypeDmaAct = 0x39,   // DMA activate FIS - device to host
-    FisTypeDmaSetup = 0x41, // DMA setup FIS - bidirectional
-    FisTypeData = 0x46,     // Data FIS - bidirectional
-    FisTypeBist = 0x58,     // BIST activate FIS - bidirectional
-    FisTypePioSetup = 0x5F, // PIO setup FIS - device to host
-    FisTypeDevBits = 0xA1,  // Set device bits FIS - device to host
+    RegH2d = 0x27,   // Register FIS - host to device
+    RegD2h = 0x34,   // Register FIS - device to host
+    DmaAct = 0x39,   // DMA activate FIS - device to host
+    DmaSetup = 0x41, // DMA setup FIS - bidirectional
+    Data = 0x46,     // Data FIS - bidirectional
+    Bist = 0x58,     // BIST activate FIS - bidirectional
+    PioSetup = 0x5F, // PIO setup FIS - device to host
+    DevBits = 0xA1,  // Set device bits FIS - device to host
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -208,7 +208,7 @@ impl HbaMem {
             if ind_sel & self.pi != 0 {
                 vec.push(i);
             }
-            ind_sel = ind_sel << 1;
+            ind_sel <<= 1;
         }
         vec
     }
@@ -289,7 +289,7 @@ impl HbaPort {
     pub fn port_rebase(&mut self, heap_regions: &Vec<(&PhysPage4KiB, usize)>) -> Box<PortSetup> {
         self.stop_cmd(); // Stop command engine
 
-        let mut port_setup = Box::new(PortSetup::default());
+        let mut port_setup = Box::<PortSetup>::default();
 
         let cmd_list = unsafe {
             (translate_ref_to_phys(heap_regions, &port_setup.cmd_list)) as *const _ as usize
@@ -412,7 +412,7 @@ impl HbaPort {
         let test: usize = &cmdtbl.cfis as *const _ as usize;
         let cmdfis = unsafe { &mut *(test as *mut FisRegH2d) };
 
-        cmdfis.fis_type = FisType::FisTypeRegH2d as u8;
+        cmdfis.fis_type = FisType::RegH2d as u8;
         cmdfis.pmult = 0b10000000; // Command
         cmdfis.command = ATA_CMD_READ_DMA_EX;
 

@@ -49,7 +49,7 @@ pub fn enable_syscalls() {
     let addr_to_exec: usize = syscall_test as *const () as usize;
     unsafe {
         // enable syscall extension
-        asm!("rdmsr", "or rax, 1", "wrmsr", in("rcx") 0xC0000080 as u32, in("rax") 0);
+        asm!("rdmsr", "or rax, 1", "wrmsr", in("rcx") 0xC0000080_u32, in("rax") 0);
 
         // set syscall/sysret seg selectors
         write_msr(0xC0000081, 0x0010000800000000);
